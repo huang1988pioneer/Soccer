@@ -108,6 +108,7 @@ var captain_portrait_sprite: Sprite2D
 var captain_name_label: Label
 var captain_role_label: Label
 var team_row_labels: Array = []
+var team_row_buttons: Array = []
 var roster_rows: Dictionary = {}
 var menu_mascot: Sprite2D
 var menu_teammates_art: Sprite2D
@@ -193,6 +194,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		elif key_event.pressed and not key_event.echo:
 			match key_event.keycode:
+				KEY_1: _select_player("blue-captain")
+				KEY_2: _select_player("blue-mid")
+				KEY_3: _select_player("blue-keeper")
 				KEY_E: _pass_ball()
 				KEY_Q: _tackle()
 				KEY_R: _use_skill()
@@ -555,14 +559,40 @@ func _update_captain_card() -> void:
 		var teammate := _get_player(team_ids[i])
 		if teammate.is_empty(): continue
 		var is_selected: bool = str(teammate["id"]) == selected_player_id
-		team_row_labels[i].text = "●  %s      %s · %s      %d" % [str(teammate["name"]), str(teammate["role"]), "1P" if is_selected else "AI", int(team_ratings[i])]
+		team_row_labels[i].text = "%d  ●  %s      %s · %s      %d" % [i + 1, str(teammate["name"]), str(teammate["role"]), "1P" if is_selected else "AI", int(team_ratings[i])]
 		team_row_labels[i].add_theme_color_override("font_color", Color("#d3e7ff") if is_selected else text_muted)
 
 
-func _select_player(player_id: String) -> void:
-	if game_active: return
+func _set_controlled_player(player_id: String, announce := true) -> void:
 	var selected := _get_player(player_id)
 	if selected.is_empty() or str(selected["team"]) != BLUE: return
+	if selected_player_id == player_id:
+		_update_captain_card()
+		return
+	selected_player_id = player_id
+	for player in players:
+		if player["team"] == BLUE: player["controlled"] = str(player["id"]) == selected_player_id
+	shoot_charging = false
+	dash_timer = 0.0
+	move_target_active = false
+	_refresh_roster_selection()
+	_update_captain_card()
+	if announce: _show_toast("切換至 %s · %s" % [str(selected["name"]), str(selected["role"])], 1.2)
+	queue_redraw()
+
+
+func _select_player(player_id: String) -> void:
+	var selected := _get_player(player_id)
+	if selected.is_empty() or str(selected["team"]) != BLUE: return
+	if game_active:
+		if game_mode == "penalty":
+			_show_toast("點球挑戰固定由目前射手出腳。", 1.1)
+			return
+		if paused or goal_lock:
+			_show_toast("比賽暫停或結算中，暫時無法切換球員。", 1.0)
+			return
+		_set_controlled_player(player_id, true)
+		return
 	selected_player_id = player_id
 	for player in players:
 		if player["team"] == BLUE: player["controlled"] = str(player["id"]) == selected_player_id
@@ -616,11 +646,26 @@ func _build_match_ui() -> void:
 	hud["skill_bar"] = ColorRect.new(); hud["skill_bar"].color = Color("#ffd462"); hud["skill_bar"].position = Vector2(15, 153); hud["skill_bar"].size = Vector2(108, 8); captain.add_child(hud["skill_bar"])
 
 	var team_card := _panel(match_ui, Rect2(963, 270, 289, 156), Color("#0a2c5c", .96), 16)
-	_label(team_card, "場上隊友", Vector2(14, 10), Vector2(140, 22), 12, Color("#b3d1ed"))
+	_label(team_card, "場上隊友  ·  1/2/3 切換", Vector2(14, 10), Vector2(255, 22), 11, Color("#b3d1ed"))
 	team_row_labels.clear()
-	var team_rows := ["●  喵白白      前鋒 · 1P      92", "●  喵布布      中場 · AI      86", "●  喵小白      守門 · AI      79"]
+	team_row_buttons.clear()
+	var team_ids := ["blue-captain", "blue-mid", "blue-keeper"]
+	var team_rows := ["1  ●  喵白白      前鋒 · 1P      92", "2  ●  喵布布      中場 · AI      86", "3  ●  喵小白      守門 · AI      79"]
 	for i in range(team_rows.size()):
 		team_row_labels.append(_label(team_card, team_rows[i], Vector2(15, 40 + i * 34), Vector2(260, 24), 10, Color("#d3e7ff") if i == 0 else text_muted))
+		var row_button := Button.new()
+		row_button.position = Vector2(5, 35 + i * 34)
+		row_button.size = Vector2(279, 31)
+		row_button.text = ""
+		row_button.focus_mode = Control.FOCUS_NONE
+		row_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		row_button.tooltip_text = "點擊或按 %d 切換操作球員" % (i + 1)
+		row_button.add_theme_stylebox_override("normal", _style_box(Color.TRANSPARENT, Color.TRANSPARENT, 10))
+		row_button.add_theme_stylebox_override("hover", _style_box(Color("#2b6ca5", .18), Color("#82dfff", .48), 10))
+		row_button.add_theme_stylebox_override("pressed", _style_box(Color("#133f79", .34), Color("#ffdf85", .72), 10))
+		row_button.pressed.connect(_select_player.bind(team_ids[i]))
+		team_card.add_child(row_button)
+		team_row_buttons.append(row_button)
 
 	var stats := _panel(match_ui, Rect2(963, 437, 289, 145), Color("#0a2c5c", .96), 16)
 	_label(stats, "比賽資料                         LIVE", Vector2(14, 10), Vector2(260, 22), 11, Color("#b3d1ed"))
@@ -647,7 +692,7 @@ func _build_match_ui() -> void:
 	action_buttons["shoot"].button_down.connect(_begin_shoot)
 	action_buttons["shoot"].button_up.connect(_finish_shoot)
 	aim_label = _label(match_ui, "長按射門蓄力", Vector2(735, 658), Vector2(180, 20), 10, Color("#ffe5a0"))
-	footer_hint_label = _label(match_ui, "⌁ 靠近足球自動控球   ·   SPACE 蓄力射門   ·   E 傳球   ·   SHIFT 衝刺", Vector2(210, 683), Vector2(700, 23), 10, text_muted)
+	footer_hint_label = _label(match_ui, "⌁ 1/2/3 切換球員   ·   靠近足球自動控球   ·   SPACE 蓄力射門   ·   E 傳球   ·   SHIFT 衝刺", Vector2(150, 683), Vector2(820, 23), 10, text_muted)
 	_update_captain_card()
 
 
@@ -656,10 +701,10 @@ func _build_help_overlay() -> void:
 	help_overlay.visible = false
 	ui_layer.add_child(help_overlay)
 	var dim := ColorRect.new(); dim.color = Color("#020817", .78); dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); help_overlay.add_child(dim)
-	var card := _panel(help_overlay, Rect2(350, 120, 580, 475), Color("#0b2b5c", .99), 22)
+	var card := _panel(help_overlay, Rect2(350, 105, 580, 500), Color("#0b2b5c", .99), 22)
 	_label(card, "QUICK GUIDE", Vector2(28, 25), Vector2(200, 20), 10, Color("#82dfff"))
 	_label(card, "3 分鐘學會喵咪足球", Vector2(28, 48), Vector2(480, 42), 25, text_main)
-	var guides := ["W A S D / 方向鍵|移動喵白白", "SPACE（長按）|蓄力射門", "E|傳給前方隊友", "SHIFT|短暫衝刺", "Q|鏟球／搶球", "R|喵力值滿時發動必殺"]
+	var guides := ["W A S D / 方向鍵|移動目前球員", "1 / 2 / 3|切換目前操作球員", "SPACE（長按）|蓄力射門", "E|傳給前方隊友", "SHIFT|短暫衝刺", "Q|鏟球／搶球", "R|喵力值滿時發動必殺"]
 	for i in range(guides.size()):
 		var parts: PackedStringArray = guides[i].split("|")
 		var gx := 28.0 + float(i % 2) * 260.0
@@ -667,8 +712,8 @@ func _build_help_overlay() -> void:
 		var row := _panel(card, Rect2(gx, gy, 240, 48), Color("#061d45", .82), 10)
 		_label(row, parts[0], Vector2(8, 2), Vector2(110, 19), 10, gold)
 		_label(row, parts[1], Vector2(8, 22), Vector2(220, 19), 10, text_muted)
-	_label(card, "靠近足球會自動控球。先拿到 3 分或時間結束時比分較高者獲勝。", Vector2(29, 305), Vector2(510, 45), 11, text_muted)
-	var close := _button(card, "知道了，開始比賽！", Rect2(150, 378, 280, 48), true)
+	_label(card, "靠近足球會自動控球。比賽中可用 1/2/3 接管三位主角；點球挑戰則固定由目前射手出腳。", Vector2(29, 365), Vector2(520, 45), 11, text_muted)
+	var close := _button(card, "知道了，開始比賽！", Rect2(150, 425, 280, 48), true)
 	close.pressed.connect(func(): help_overlay.visible = false; _start_match())
 
 
@@ -788,7 +833,7 @@ func _configure_action_buttons() -> void:
 	if is_instance_valid(aim_label):
 		aim_label.text = "長按射門蓄力" if field_mode else "A / D 瞄準　SPACE 射門"
 	if is_instance_valid(footer_hint_label):
-		footer_hint_label.text = "⌁ 三局淘汰賽 · 先贏兩局   ·   SPACE 蓄力射門   ·   E 傳球   ·   SHIFT 衝刺" if game_mode == "tournament" else ("⌁ 點擊／拖曳球場移動   ·   SPACE 蓄力射門   ·   E 傳球   ·   SHIFT 衝刺" if field_mode else "⌁ 點擊球門落點或 W/S 瞄準   ·   SPACE 出腳   ·   5 球後結算")
+		footer_hint_label.text = "⌁ 三局淘汰賽 · 1/2/3 切換球員 · 先贏兩局   ·   SPACE 蓄力射門   ·   E 傳球   ·   SHIFT 衝刺" if game_mode == "tournament" else ("⌁ 1/2/3 切換球員 · 點擊／拖曳球場移動   ·   SPACE 蓄力射門   ·   E 傳球   ·   SHIFT 衝刺" if field_mode else "⌁ 點擊球門落點或 W/S 瞄準   ·   SPACE 出腳   ·   5 球後結算")
 
 
 func _quit_to_menu() -> void:

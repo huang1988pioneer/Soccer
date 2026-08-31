@@ -250,8 +250,8 @@
     if (ui.footerTip) ui.footerTip.innerHTML = isPenalty
       ? "⌁ 點擊球門落點或 W/S 瞄準 · <b>SPACE</b> 出腳 · 5 球後結算"
       : isTournament
-        ? "⌁ 三局淘汰賽 · 先贏兩局 · <b>SPACE</b> 蓄力射門 · <b>E</b> 傳球 · <b>SHIFT</b> 衝刺"
-        : "⌁ 點擊／拖曳球場移動 · <b>SPACE</b> 蓄力射門 · <b>E</b> 傳球 · <b>SHIFT</b> 衝刺";
+        ? "⌁ 三局淘汰賽 · <b>1/2/3</b> 切換球員 · <b>SPACE</b> 蓄力射門 · <b>E</b> 傳球 · <b>SHIFT</b> 衝刺"
+        : "⌁ 點擊／拖曳球場移動 · <b>1/2/3</b> 切換球員 · <b>SPACE</b> 蓄力射門 · <b>E</b> 傳球 · <b>SHIFT</b> 衝刺";
   }
 
   function startMatch(mode = state.selectedMode) {
@@ -367,8 +367,12 @@
     document.querySelectorAll(".mini-player[data-player-id]").forEach((row) => {
       const selected = row.dataset.playerId === player.id;
       row.classList.toggle("active", selected);
+      row.setAttribute("aria-pressed", selected ? "true" : "false");
+      const shortcut = row.dataset.switchKey;
+      const rowPlayer = getPlayer(row.dataset.playerId);
+      if (rowPlayer) row.setAttribute("aria-label", `${rowPlayer.name} · 按 ${shortcut || "快捷鍵"} 切換操作`);
       const role = row.querySelector("small");
-      if (role) role.textContent = `${getPlayer(row.dataset.playerId)?.role || ""} · ${selected ? "1P" : "AI"}`;
+      if (role) role.textContent = `${rowPlayer?.role || ""} · ${selected ? "1P" : "AI"}`;
     });
     const tip = document.querySelector(".tip-card p");
     if (tip) tip.innerHTML = `<b>小提醒</b><br />射門方向會跟著${player.name}面向改變，衝刺後接射門更容易突破守門員！`;
@@ -382,9 +386,12 @@
   }
 
   function selectPlayer(playerId) {
-    if (state.active) return;
     const selected = getPlayer(playerId);
     if (!selected || selected.team !== TEAM.blue) return;
+    if (state.active) {
+      switchPlayer(selected.id);
+      return;
+    }
     state.selectedPlayerId = selected.id;
     players.filter((player) => player.team === TEAM.blue).forEach((player) => {
       player.controlled = player.id === state.selectedPlayerId;
@@ -392,6 +399,33 @@
     updateCaptainCard(selected);
     updateRosterSelection();
     showToast(`${selected.name} 已加入先發 · ${selected.role}`, 1300);
+  }
+
+  function switchPlayer(playerId) {
+    if (!state.active) return false;
+    if (state.mode === "penalty") {
+      showToast("點球挑戰固定由目前射手出腳。", 1100);
+      return false;
+    }
+    if (state.paused || state.goalLock) {
+      showToast("比賽暫停或結算中，暫時無法切換球員。", 1000);
+      return false;
+    }
+    const selected = getPlayer(playerId);
+    if (!selected || selected.team !== TEAM.blue) return false;
+    if (selected.id === state.selectedPlayerId) return true;
+    state.selectedPlayerId = selected.id;
+    state.shootCharging = false;
+    state.moveTargetActive = false;
+    state.dashTimer = 0;
+    players.filter((player) => player.team === TEAM.blue).forEach((player) => {
+      player.controlled = player.id === state.selectedPlayerId;
+    });
+    updateCaptainCard(selected);
+    updateRosterSelection();
+    updateUi(true);
+    showToast(`切換至 ${selected.name} · ${selected.role}`, 1200);
+    return true;
   }
 
   function setSkill(amount) {
@@ -1240,6 +1274,10 @@
       const key = event.key.toLowerCase();
       if (["arrowleft", "arrowright", "arrowup", "arrowdown", " "].includes(key)) event.preventDefault();
       if (key === "escape") { if (!ui.helpModal.hidden) hideModal(ui.helpModal); else if (state.active) togglePause(); return; }
+      if (state.active && { "1": "blue-captain", "2": "blue-mid", "3": "blue-keeper" }[key]) {
+        switchPlayer({ "1": "blue-captain", "2": "blue-mid", "3": "blue-keeper" }[key]);
+        return;
+      }
       if (state.active && state.mode === "penalty") {
         if (["a", "arrowleft"].includes(key)) { state.penaltyAim = clamp(state.penaltyAim - .12, -1, 1); return; }
         if (["d", "arrowright"].includes(key)) { state.penaltyAim = clamp(state.penaltyAim + .12, -1, 1); return; }
@@ -1270,6 +1308,13 @@
     ui.goalContinue.addEventListener("click", continueAfterGoal);
     document.querySelectorAll("[data-close-modal]").forEach((button) => button.addEventListener("click", () => hideModal(document.getElementById(button.dataset.closeModal))));
     document.querySelectorAll(".roster-item[data-player-id]").forEach((button) => button.addEventListener("click", () => selectPlayer(button.dataset.playerId)));
+    document.querySelectorAll(".mini-player[data-player-id]").forEach((row) => {
+      const choose = () => selectPlayer(row.dataset.playerId);
+      row.addEventListener("click", choose);
+      row.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") { event.preventDefault(); choose(); }
+      });
+    });
     document.querySelectorAll(".mode-card").forEach((button) => button.addEventListener("click", () => {
       const selectedMode = button.dataset.mode;
       if (selectedMode !== "quick" && selectedMode !== "penalty" && selectedMode !== "tournament") {

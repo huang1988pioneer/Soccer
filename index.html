@@ -144,10 +144,10 @@
                 <div class="energy-meter"><div class="meter-label"><span>喵力值</span><b id="skill-value">42%</b></div><div class="meter-track"><i id="skill-bar"></i></div><small>進球、傳球與搶球都會累積</small></div>
               </article>
               <article class="side-card team-card">
-                <div class="side-card-heading"><span>場上隊友</span><span class="team-count">3 / 3</span></div>
-                <div class="mini-player active" data-player-id="blue-captain"><span class="mini-dot blue"></span><span><b>喵白白</b><small>前鋒 · 1P</small></span><strong>92</strong></div>
-                <div class="mini-player" data-player-id="blue-mid"><span class="mini-dot orange"></span><span><b>喵布布</b><small>中場 · AI</small></span><strong>86</strong></div>
-                <div class="mini-player" data-player-id="blue-keeper"><span class="mini-dot white"></span><span><b>喵小白</b><small>守門 · AI</small></span><strong>79</strong></div>
+                <div class="side-card-heading"><span>場上隊友 · 1/2/3 切換</span><span class="team-count">3 / 3</span></div>
+                <div class="mini-player active" data-player-id="blue-captain" data-switch-key="1" role="button" tabindex="0" aria-pressed="true" aria-label="喵白白 · 按 1 切換操作"><span class="mini-dot blue"></span><span><b>喵白白</b><small>前鋒 · 1P</small></span><strong>92</strong><kbd class="player-shortcut">1</kbd></div>
+                <div class="mini-player" data-player-id="blue-mid" data-switch-key="2" role="button" tabindex="0" aria-pressed="false" aria-label="喵布布 · 按 2 切換操作"><span class="mini-dot orange"></span><span><b>喵布布</b><small>中場 · AI</small></span><strong>86</strong><kbd class="player-shortcut">2</kbd></div>
+                <div class="mini-player" data-player-id="blue-keeper" data-switch-key="3" role="button" tabindex="0" aria-pressed="false" aria-label="喵小白 · 按 3 切換操作"><span class="mini-dot white"></span><span><b>喵小白</b><small>守門 · AI</small></span><strong>79</strong><kbd class="player-shortcut">3</kbd></div>
               </article>
               <article class="side-card match-stats-card">
                 <div class="side-card-heading"><span>比賽資料</span><span class="panel-mark">LIVE</span></div>
@@ -168,7 +168,8 @@
         <button class="modal-close" data-close-modal="help-modal" type="button" aria-label="關閉">×</button>
         <span class="panel-kicker">QUICK GUIDE</span><h2 id="help-title">3 分鐘學會喵咪足球</h2>
         <div class="guide-grid">
-          <div class="guide-item"><kbd>W A S D</kbd><span>移動喵白白</span></div>
+          <div class="guide-item"><kbd>W A S D</kbd><span>移動目前球員</span></div>
+          <div class="guide-item"><kbd>1 / 2 / 3</kbd><span>切換目前操作球員</span></div>
           <div class="guide-item"><kbd>SPACE</kbd><span>長按蓄力，放開射門</span></div>
           <div class="guide-item"><kbd>E</kbd><span>傳給前方隊友</span></div>
           <div class="guide-item"><kbd>SHIFT</kbd><span>短暫衝刺（消耗體力）</span></div>
