@@ -5,6 +5,7 @@
 目前完成的可玩流程：
 
 - 主選單 → 3v3 快速賽
+- 主選單 → 錦標賽（3 局制，先贏 2 局可獲得冠軍獎盃）
 - 主選單 → 點球挑戰（5 球制，守門員 AI 會讀取你的瞄準方向；Godot／瀏覽器版皆可玩）
 - 主選單可點選三位生成式角色；選中的球員會成為 1P，並同步更新比賽中的肖像、能力與隊友清單
 - WASD／方向鍵或手機虛擬搖桿移動
@@ -70,6 +71,7 @@ python3 -m http.server 8000
 - `assets/generated/mode-tournament-v1.png`：錦標賽主選單卡片插圖
 - `assets/generated/mode-story-v1.png`：故事模式主選單卡片插圖
 - `assets/generated/mode-penalty-challenge-v1.png`：點球挑戰主選單卡片插圖
+- `assets/generated/tournament-trophy-v1.png`：錦標賽冠軍獎盃（透明 PNG）
 - `assets/generated/action-pass-icon-v1.png`：傳球操作圖示（透明 PNG）
 - `assets/generated/action-shoot-icon-v1.png`：射門／蓄力操作圖示（透明 PNG）
 - `assets/generated/action-dash-icon-v1.png`：衝刺操作圖示（透明 PNG）

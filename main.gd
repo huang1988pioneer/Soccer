@@ -31,6 +31,7 @@ var mode_quick_texture: Texture2D = preload("res://assets/generated/mode-quick-m
 var mode_tournament_texture: Texture2D = preload("res://assets/generated/mode-tournament-v1.png")
 var mode_story_texture: Texture2D = preload("res://assets/generated/mode-story-v1.png")
 var mode_penalty_texture: Texture2D = preload("res://assets/generated/mode-penalty-challenge-v1.png")
+var tournament_trophy_texture: Texture2D = preload("res://assets/generated/tournament-trophy-v1.png")
 var action_pass_texture: Texture2D = preload("res://assets/generated/action-pass-icon-v1.png")
 var action_shoot_texture: Texture2D = preload("res://assets/generated/action-shoot-icon-v1.png")
 var action_dash_texture: Texture2D = preload("res://assets/generated/action-dash-icon-v1.png")
@@ -77,6 +78,10 @@ var penalty_shot_duration := 0.58
 var penalty_shot_start := Vector2.ZERO
 var penalty_shot_target := Vector2.ZERO
 var penalty_shot_active := false
+var tournament_round := 0
+var tournament_wins := 0
+var tournament_losses := 0
+var tournament_round_complete := false
 var move_target := Vector2.ZERO
 var move_target_active := false
 
@@ -157,13 +162,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 	if event is InputEventScreenDrag:
 		var drag_event := event as InputEventScreenDrag
-		if game_mode == "quick":
+		if game_mode == "quick" or game_mode == "tournament":
 			_set_move_target(_canvas_to_world(drag_event.position))
 			get_viewport().set_input_as_handled()
 			return
 	if event is InputEventMouseMotion:
 		var motion_event := event as InputEventMouseMotion
-		if game_mode == "quick" and (motion_event.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
+		if (game_mode == "quick" or game_mode == "tournament") and (motion_event.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
 			_set_move_target(_canvas_to_world(motion_event.position))
 			get_viewport().set_input_as_handled()
 			return
@@ -489,7 +494,7 @@ func _build_menu_ui() -> void:
 	trophy_art.centered = true
 	trophy_art.z_index = 2
 	tournament.add_child(trophy_art)
-	tournament.pressed.connect(func(): _show_toast("錦標賽即將開放，先來一場快速賽吧！", 1.8))
+	tournament.pressed.connect(func(): _start_match("tournament"))
 	var story := _button(menu_panel, "▣  故事模式", Rect2(16, 143, 274, 40), false)
 	_tint_button(story, Color("#1e8a70", .9), Color("#2cb38d", .95))
 	story.pressed.connect(func(): _show_toast("故事模式正在製作中！", 1.6))
@@ -509,8 +514,8 @@ func _build_menu_ui() -> void:
 	_label(mode_panel, "遊戲模式", Vector2(16, 12), Vector2(180, 28), 17, text_main)
 	var mode_quick := _mode_card_button(mode_panel, mode_quick_texture, "快速賽", "2:00 · 對戰 CPU", Rect2(14, 49, 132, 80))
 	mode_quick.pressed.connect(_start_match)
-	var mode_tournament := _mode_card_button(mode_panel, mode_tournament_texture, "錦標賽", "淘汰賽 · 即將開放", Rect2(160, 49, 132, 80), true)
-	mode_tournament.pressed.connect(func(): _show_toast("錦標賽正在準備中，先來一場快速賽吧！", 1.7))
+	var mode_tournament := _mode_card_button(mode_panel, mode_tournament_texture, "錦標賽", "3 局制 · 先贏 2 局", Rect2(160, 49, 132, 80))
+	mode_tournament.pressed.connect(func(): _start_match("tournament"))
 	var mode_story := _mode_card_button(mode_panel, mode_story_texture, "故事模式", "島嶼冒險 · 即將開放", Rect2(14, 137, 132, 80), true)
 	mode_story.pressed.connect(func(): _show_toast("故事模式正在製作中，敬請期待！", 1.7))
 	var mode_penalty := _mode_card_button(mode_panel, mode_penalty_texture, "點球挑戰", "5 球制 · 瞄準射門", Rect2(160, 137, 132, 80))
@@ -718,7 +723,7 @@ func _build_toast() -> void:
 
 
 func _start_match(mode: String = "quick") -> void:
-	game_mode = mode if mode == "penalty" else "quick"
+	game_mode = "penalty" if mode == "penalty" else ("tournament" if mode == "tournament" else "quick")
 	for player in players:
 		if player["team"] == BLUE: player["controlled"] = str(player["id"]) == selected_player_id
 	game_active = true
@@ -727,7 +732,7 @@ func _start_match(mode: String = "quick") -> void:
 	final_match = false
 	player_score = 0
 	cpu_score = 0
-	time_left = 35.0 if game_mode == "penalty" else 120.0
+	time_left = 35.0 if game_mode == "penalty" else (90.0 if game_mode == "tournament" else 120.0)
 	skill = 42.0
 	shots = 0
 	passes = 0
@@ -744,11 +749,15 @@ func _start_match(mode: String = "quick") -> void:
 	penalty_aim = 0.0
 	penalty_shot_timer = 0.0
 	penalty_shot_active = false
+	tournament_round = 0
+	tournament_wins = 0
+	tournament_losses = 0
+	tournament_round_complete = false
 	_reset_positions(true)
 	if game_mode == "penalty": _prepare_penalty_round()
-	if is_instance_valid(match_header_label): match_header_label.text = "點球挑戰 · 5 球制" if game_mode == "penalty" else "快速賽 · 第 1 局"
-	if is_instance_valid(match_mode_label): match_mode_label.text = "點球挑戰" if game_mode == "penalty" else "快速賽"
-	if hud.has("red_name"): hud["red_name"].text = "守門員  🧤" if game_mode == "penalty" else "紅隊  🐱"
+	if is_instance_valid(match_header_label): match_header_label.text = "點球挑戰 · 5 球制" if game_mode == "penalty" else ("錦標賽 · 第 1 / 3 局" if game_mode == "tournament" else "快速賽 · 第 1 局")
+	if is_instance_valid(match_mode_label): match_mode_label.text = "點球挑戰" if game_mode == "penalty" else ("錦標賽" if game_mode == "tournament" else "快速賽")
+	if hud.has("red_name"): hud["red_name"].text = "守門員  🧤" if game_mode == "penalty" else ("挑戰者  🏆" if game_mode == "tournament" else "紅隊  🐱")
 	_configure_action_buttons()
 	menu_ui.visible = false
 	match_ui.visible = true
@@ -758,25 +767,27 @@ func _start_match(mode: String = "quick") -> void:
 	pause_overlay.visible = false
 	goal_overlay.visible = false
 	if is_instance_valid(goal_effect_art): goal_effect_art.visible = false
-	if is_instance_valid(goal_celebration_art): goal_celebration_art.visible = false
+	if is_instance_valid(goal_celebration_art):
+		goal_celebration_art.texture = goal_celebration_texture
+		goal_celebration_art.visible = false
 	_update_captain_card()
 	_update_hud()
-	_show_toast("A / D 瞄準，SPACE 射門！" if game_mode == "penalty" else "開球！靠近足球就能自動控球。", 2.4)
+	_show_toast("A / D 瞄準，SPACE 射門！" if game_mode == "penalty" else ("錦標賽開幕！先贏兩局就能捧杯。" if game_mode == "tournament" else "開球！靠近足球就能自動控球。"), 2.4)
 	queue_redraw()
 
 
 func _configure_action_buttons() -> void:
-	var quick_mode := game_mode == "quick"
+	var field_mode := game_mode == "quick" or game_mode == "tournament"
 	for key in ["pass", "dash", "tackle", "skill"]:
-		if action_buttons.has(key): action_buttons[key].visible = quick_mode
+		if action_buttons.has(key): action_buttons[key].visible = field_mode
 	if action_labels.has("shoot"):
 		action_labels["shoot"].text = "射門"
 	if action_icons.has("shoot"):
-		action_icons["shoot"].modulate = Color(1.0, 1.0, 1.0, 1.0 if quick_mode else .9)
+		action_icons["shoot"].modulate = Color(1.0, 1.0, 1.0, 1.0 if field_mode else .9)
 	if is_instance_valid(aim_label):
-			aim_label.text = "長按射門蓄力" if quick_mode else "A / D 瞄準　SPACE 射門"
+		aim_label.text = "長按射門蓄力" if field_mode else "A / D 瞄準　SPACE 射門"
 	if is_instance_valid(footer_hint_label):
-		footer_hint_label.text = "⌁ 點擊／拖曳球場移動   ·   SPACE 蓄力射門   ·   E 傳球   ·   SHIFT 衝刺" if quick_mode else "⌁ 點擊球門落點或 W/S 瞄準   ·   SPACE 出腳   ·   5 球後結算"
+		footer_hint_label.text = "⌁ 三局淘汰賽 · 先贏兩局   ·   SPACE 蓄力射門   ·   E 傳球   ·   SHIFT 衝刺" if game_mode == "tournament" else ("⌁ 點擊／拖曳球場移動   ·   SPACE 蓄力射門   ·   E 傳球   ·   SHIFT 衝刺" if field_mode else "⌁ 點擊球門落點或 W/S 瞄準   ·   SPACE 出腳   ·   5 球後結算")
 
 
 func _quit_to_menu() -> void:
@@ -788,6 +799,10 @@ func _quit_to_menu() -> void:
 	shoot_fx_timer = 0.0
 	skill_fx_timer = 0.0
 	penalty_shot_active = false
+	tournament_round = 0
+	tournament_wins = 0
+	tournament_losses = 0
+	tournament_round_complete = false
 	goal_overlay.visible = false
 	pause_overlay.visible = false
 	match_ui.visible = false
@@ -1279,6 +1294,31 @@ func _set_skill(amount: float) -> void:
 	_update_hud()
 
 
+func _show_tournament_round_result() -> void:
+	var round_won := player_score > cpu_score
+	var round_lost := player_score < cpu_score
+	if round_won: tournament_wins += 1
+	if round_lost: tournament_losses += 1
+	tournament_round += 1
+	tournament_round_complete = true
+	final_match = tournament_round >= 3 or tournament_wins >= 2 or tournament_losses >= 2
+	var trophy_won := final_match and tournament_wins > tournament_losses
+	var title := "第 %d 局平手" % tournament_round
+	if round_won: title = "第 %d 局勝利！" % tournament_round
+	if round_lost: title = "第 %d 局失利" % tournament_round
+	if final_match: title = "錦標賽結束"
+	if trophy_won: title = "錦標賽勝利！"
+	hud["goal_title"].text = title
+	var subtitle := "本局 %d — %d　·　目前戰績 %d 勝 %d 敗" % [player_score, cpu_score, tournament_wins, tournament_losses]
+	if final_match: subtitle = "錦標賽戰績 %d 勝 %d 敗，再接再厲！" % [tournament_wins, tournament_losses]
+	if trophy_won: subtitle = "錦標賽戰績 %d 勝 %d 敗，喵咪隊捧起冠軍！" % [tournament_wins, tournament_losses]
+	hud["goal_subtitle"].text = subtitle
+	goal_continue_button.text = "返回主選單  →" if final_match else "下一局  →"
+	if is_instance_valid(goal_celebration_art):
+		goal_celebration_art.texture = tournament_trophy_texture if trophy_won else goal_celebration_texture
+		goal_celebration_art.visible = true
+
+
 func _score_goal(team: String) -> void:
 	if goal_lock: return
 	if game_mode == "penalty": return
@@ -1288,25 +1328,31 @@ func _score_goal(team: String) -> void:
 		player_score += 1; combo = mini(combo + 1, 9); skill = clampf(skill + 30.0, 0.0, 100.0); _spawn_goal_particles(1210.0, 360.0, Color("#ffdf69"))
 	else:
 		cpu_score += 1; combo = 1; _spawn_goal_particles(70.0, 360.0, Color("#ff8a77"))
-	final_match = player_score >= 3 or cpu_score >= 3 or time_left <= 0.0
+	final_match = false if game_mode == "tournament" else player_score >= 3 or cpu_score >= 3 or time_left <= 0.0
 	hud["goal_title"].text = "GOAL!"
 	hud["goal_subtitle"].text = "喵咪隊拿下一分！" if team == BLUE else "紅隊突破了防線！"
 	hud["goal_score"].text = "%d       —       %d" % [player_score, cpu_score]
 	goal_continue_button.text = "查看比賽結果  →" if final_match else "繼續比賽  →"
 	if is_instance_valid(goal_effect_art): goal_effect_art.visible = true
-	if is_instance_valid(goal_celebration_art): goal_celebration_art.visible = team == BLUE
+	if is_instance_valid(goal_celebration_art):
+		goal_celebration_art.texture = goal_celebration_texture
+		goal_celebration_art.visible = team == BLUE
 	_update_hud(); goal_overlay.visible = true
 
 
 func _finish_match_by_time() -> void:
 	if goal_lock or game_mode == "penalty": return
-	goal_lock = true; paused = true; final_match = true
-	hud["goal_title"].text = "時間到！"
-	hud["goal_subtitle"].text = "平局！兩隊都踢得很精彩" if player_score == cpu_score else ("喵咪隊拿下勝利！" if player_score > cpu_score else "紅隊暫時領先，下次再來挑戰！")
+	goal_lock = true; paused = true
+	if game_mode == "tournament":
+		final_match = false
+		_show_tournament_round_result()
+	else:
+		final_match = true
+		hud["goal_title"].text = "時間到！"
+		hud["goal_subtitle"].text = "平局！兩隊都踢得很精彩" if player_score == cpu_score else ("喵咪隊拿下勝利！" if player_score > cpu_score else "紅隊暫時領先，下次再來挑戰！")
+		if is_instance_valid(goal_celebration_art): goal_celebration_art.visible = false
 	hud["goal_score"].text = "%d       —       %d" % [player_score, cpu_score]
-	goal_continue_button.text = "返回主選單  →"
 	if is_instance_valid(goal_effect_art): goal_effect_art.visible = false
-	if is_instance_valid(goal_celebration_art): goal_celebration_art.visible = false
 	_update_hud(); goal_overlay.visible = true
 
 
@@ -1318,6 +1364,21 @@ func _continue_after_goal() -> void:
 		paused = false
 		_prepare_penalty_round()
 		_show_toast("第 %d 球！W/S 或 A/D 瞄準後按 SPACE。" % (penalty_round + 1), 1.5)
+		return
+	if game_mode == "tournament" and tournament_round_complete:
+		tournament_round_complete = false
+		goal_overlay.visible = false
+		goal_lock = false
+		paused = false
+		player_score = 0
+		cpu_score = 0
+		time_left = 90.0
+		combo = 1
+		_reset_positions(true)
+		if is_instance_valid(match_header_label): match_header_label.text = "錦標賽 · 第 %d / 3 局" % (tournament_round + 1)
+		_configure_action_buttons()
+		_update_hud()
+		_show_toast("第 %d / 3 局！先贏兩局就能捧杯。" % (tournament_round + 1), 1.6)
 		return
 	goal_overlay.visible = false; goal_lock = false; paused = false; _reset_positions(true); _show_toast("重新開球！這次換你進攻。", 1.2)
 

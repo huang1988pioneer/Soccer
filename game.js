@@ -25,6 +25,8 @@
   };
   actionIcons.shoot.src = "assets/generated/action-shoot-icon-v1.png";
   actionIcons.skill.src = "assets/generated/action-skill-icon-v1.png";
+  const tournamentTrophy = new Image();
+  tournamentTrophy.src = "assets/generated/tournament-trophy-v1.png";
 
   const ui = {
     menu: document.querySelector("#menu-screen"),
@@ -65,6 +67,7 @@
     goalSubtitle: document.querySelector("#goal-subtitle"),
     goalPlayerScore: document.querySelector("#goal-player-score"),
     goalCpuScore: document.querySelector("#goal-cpu-score"),
+    goalCelebration: document.querySelector("#goal-celebration-image"),
     captainName: document.querySelector(".captain-profile h3"),
     captainRole: document.querySelector(".captain-profile p"),
     captainPortrait: document.querySelector(".captain-portrait img"),
@@ -118,6 +121,10 @@
     penaltyShotStart: { x: 930, y: WORLD.height / 2 },
     penaltyShotTarget: { x: WORLD.right + 18, y: WORLD.height / 2 },
     penaltyShotActive: false,
+    tournamentRound: 0,
+    tournamentWins: 0,
+    tournamentLosses: 0,
+    tournamentRoundComplete: false,
     moveTarget: { x: 0, y: 0 },
     moveTargetActive: false,
     joystick: { active: false, x: 0, y: 0, pointerId: null },
@@ -229,22 +236,26 @@
 
   function configureModeUi() {
     const isPenalty = state.mode === "penalty";
+    const isTournament = state.mode === "tournament";
     ui.match.classList.toggle("penalty-mode", isPenalty);
-    if (ui.matchTitle) ui.matchTitle.textContent = isPenalty ? "點球挑戰 · 5 球制" : "快速賽 · 第 1 局";
-    if (ui.matchMode) ui.matchMode.textContent = isPenalty ? "點球挑戰" : "快速賽";
-    if (ui.redTeamName) ui.redTeamName.textContent = isPenalty ? "守門喵" : "紅隊";
-    if (ui.redTeamMeta) ui.redTeamMeta.textContent = isPenalty ? "GOALKEEPER · AI" : "CPU · NOVICE";
+    ui.match.classList.toggle("tournament-mode", isTournament);
+    if (ui.matchTitle) ui.matchTitle.textContent = isPenalty ? "點球挑戰 · 5 球制" : isTournament ? `錦標賽 · 第 ${Math.min(state.tournamentRound + 1, 3)} / 3 局` : "快速賽 · 第 1 局";
+    if (ui.matchMode) ui.matchMode.textContent = isPenalty ? "點球挑戰" : isTournament ? "錦標賽" : "快速賽";
+    if (ui.redTeamName) ui.redTeamName.textContent = isPenalty ? "守門喵" : isTournament ? "挑戰者" : "紅隊";
+    if (ui.redTeamMeta) ui.redTeamMeta.textContent = isPenalty ? "GOALKEEPER · AI" : isTournament ? "KNOCKOUT · AI" : "CPU · NOVICE";
     if (ui.aimHint) {
       ui.aimHint.textContent = isPenalty ? "W/S 或 A/D 瞄準　SPACE 射門" : "長按射門蓄力";
       ui.aimHint.classList.remove("is-hidden");
     }
     if (ui.footerTip) ui.footerTip.innerHTML = isPenalty
       ? "⌁ 點擊球門落點或 W/S 瞄準 · <b>SPACE</b> 出腳 · 5 球後結算"
-      : "⌁ 點擊／拖曳球場移動 · <b>SPACE</b> 蓄力射門 · <b>E</b> 傳球 · <b>SHIFT</b> 衝刺";
+      : isTournament
+        ? "⌁ 三局淘汰賽 · 先贏兩局 · <b>SPACE</b> 蓄力射門 · <b>E</b> 傳球 · <b>SHIFT</b> 衝刺"
+        : "⌁ 點擊／拖曳球場移動 · <b>SPACE</b> 蓄力射門 · <b>E</b> 傳球 · <b>SHIFT</b> 衝刺";
   }
 
   function startMatch(mode = state.selectedMode) {
-    state.mode = mode === "penalty" ? "penalty" : "quick";
+    state.mode = mode === "penalty" ? "penalty" : mode === "tournament" ? "tournament" : "quick";
     state.selectedMode = state.mode;
     players.filter((player) => player.team === TEAM.blue).forEach((player) => {
       player.controlled = player.id === state.selectedPlayerId;
@@ -255,7 +266,7 @@
     state.finalMatch = false;
     state.playerScore = 0;
     state.cpuScore = 0;
-    state.timeLeft = state.mode === "penalty" ? 35 : 120;
+    state.timeLeft = state.mode === "penalty" ? 35 : state.mode === "tournament" ? 90 : 120;
     state.skill = 42;
     state.shots = 0;
     state.passes = 0;
@@ -273,6 +284,10 @@
     state.penaltyKeeperTargetY = WORLD.height / 2;
     state.penaltyShotTimer = 0;
     state.penaltyShotActive = false;
+    state.tournamentRound = 0;
+    state.tournamentWins = 0;
+    state.tournamentLosses = 0;
+    state.tournamentRoundComplete = false;
     state.moveTarget = { x: 0, y: 0 };
     state.moveTargetActive = false;
     hideModal(ui.helpModal);
@@ -285,7 +300,7 @@
     updateRosterSelection();
     showScreen("match");
     updateUi(true);
-    showToast(state.mode === "penalty" ? "A / D 瞄準，SPACE 射門！" : "開球！靠近足球就能自動控球。", 2600);
+    showToast(state.mode === "penalty" ? "A / D 瞄準，SPACE 射門！" : state.mode === "tournament" ? "錦標賽開幕！先贏兩局就能捧杯。" : "開球！靠近足球就能自動控球。", 2600);
     state.lastFrame = performance.now();
     requestAnimationFrame(loop);
   }
@@ -298,12 +313,17 @@
     state.shootFxTimer = 0;
     state.skillFxTimer = 0;
     state.penaltyShotActive = false;
+    state.tournamentRound = 0;
+    state.tournamentWins = 0;
+    state.tournamentLosses = 0;
+    state.tournamentRoundComplete = false;
     state.mode = "quick";
     state.selectedMode = "quick";
     hideModal(ui.pauseModal);
     hideModal(ui.goalModal);
     showScreen("menu");
     ui.match.classList.remove("penalty-mode");
+    ui.match.classList.remove("tournament-mode");
     ui.start.innerHTML = '<span class="button-icon">⚽</span> 開始 3v3 快速賽';
     state.moveTargetActive = false;
     document.querySelectorAll(".mode-card").forEach((item) => item.classList.toggle("selected", item.dataset.mode === "quick"));
@@ -717,6 +737,36 @@
     showToast("海浪射門！必殺技發動！", 1800);
   }
 
+  function showTournamentRoundResult() {
+    const roundScore = `${state.playerScore} — ${state.cpuScore}`;
+    const roundWon = state.playerScore > state.cpuScore;
+    const roundLost = state.playerScore < state.cpuScore;
+    if (roundWon) state.tournamentWins += 1;
+    if (roundLost) state.tournamentLosses += 1;
+    state.tournamentRound += 1;
+    state.tournamentRoundComplete = true;
+    const tournamentOver = state.tournamentRound >= 3 || state.tournamentWins >= 2 || state.tournamentLosses >= 2;
+    state.finalMatch = tournamentOver;
+    if (tournamentOver) {
+      const wonTournament = state.tournamentWins > state.tournamentLosses;
+      ui.goalTitle.textContent = wonTournament ? "錦標賽勝利！" : "錦標賽結束";
+      ui.goalSubtitle.textContent = wonTournament
+        ? `錦標賽戰績 ${state.tournamentWins} 勝 ${state.tournamentLosses} 敗，喵咪隊捧起冠軍！`
+        : `錦標賽戰績 ${state.tournamentWins} 勝 ${state.tournamentLosses} 敗，再接再厲！`;
+      ui.goalContinue.textContent = "返回主選單 →";
+      if (ui.goalCelebration) {
+        ui.goalCelebration.src = wonTournament ? tournamentTrophy.src : "assets/generated/goal-celebration-card-v3.png";
+      }
+    } else {
+      ui.goalTitle.textContent = roundWon ? `第 ${state.tournamentRound} 局勝利！` : roundLost ? `第 ${state.tournamentRound} 局失利` : `第 ${state.tournamentRound} 局平手`;
+      ui.goalSubtitle.textContent = `本局 ${roundScore}　·　目前戰績 ${state.tournamentWins} 勝 ${state.tournamentLosses} 敗`;
+      ui.goalContinue.textContent = "下一局 →";
+      if (ui.goalCelebration) ui.goalCelebration.src = "assets/generated/goal-celebration-card-v3.png";
+    }
+    ui.goalPlayerScore.textContent = String(state.playerScore);
+    ui.goalCpuScore.textContent = String(state.cpuScore);
+  }
+
   function cpuShoot(player) {
     const targetY = WORLD.height / 2 + random(-95, 95);
     const aim = normalize(WORLD.left - player.x, targetY - player.y);
@@ -741,9 +791,10 @@
       state.combo = 1;
       spawnGoalParticles(WORLD.left + 22, WORLD.height / 2, "#ff8a77");
     }
-    state.finalMatch = state.playerScore >= 3 || state.cpuScore >= 3 || state.timeLeft <= 0;
+    state.finalMatch = state.mode === "tournament" ? false : state.playerScore >= 3 || state.cpuScore >= 3 || state.timeLeft <= 0;
     ui.goalTitle.textContent = "GOAL!";
     ui.goalSubtitle.textContent = team === TEAM.blue ? "喵咪隊拿下一分！" : "紅隊突破了防線！";
+    if (ui.goalCelebration) ui.goalCelebration.src = "assets/generated/goal-celebration-card-v3.png";
     ui.goalPlayerScore.textContent = String(state.playerScore);
     ui.goalCpuScore.textContent = String(state.cpuScore);
     ui.goalContinue.textContent = state.finalMatch ? "查看比賽結果 →" : "繼續比賽 →";
@@ -755,13 +806,19 @@
     if (state.goalLock || state.finalMatch || state.mode === "penalty") return;
     state.goalLock = true;
     state.paused = true;
-    state.finalMatch = true;
     const won = state.playerScore > state.cpuScore;
-    ui.goalTitle.textContent = "時間到！";
-    ui.goalSubtitle.textContent = state.playerScore === state.cpuScore ? "平局！兩隊都踢得很精彩" : won ? "喵咪隊拿下勝利！" : "紅隊暫時領先，下次再來挑戰！";
+    if (state.mode === "tournament") {
+      state.finalMatch = false;
+      showTournamentRoundResult();
+    } else {
+      state.finalMatch = true;
+      ui.goalTitle.textContent = "時間到！";
+      ui.goalSubtitle.textContent = state.playerScore === state.cpuScore ? "平局！兩隊都踢得很精彩" : won ? "喵咪隊拿下勝利！" : "紅隊暫時領先，下次再來挑戰！";
+      if (ui.goalCelebration) ui.goalCelebration.src = "assets/generated/goal-celebration-card-v3.png";
+    }
     ui.goalPlayerScore.textContent = String(state.playerScore);
     ui.goalCpuScore.textContent = String(state.cpuScore);
-    ui.goalContinue.textContent = "返回主選單 →";
+    if (state.mode !== "tournament") ui.goalContinue.textContent = "返回主選單 →";
     updateUi(true);
     showModal(ui.goalModal);
   }
@@ -776,8 +833,23 @@
       showToast(`第 ${state.penaltyRound + 1} 球！W/S 或 A/D 瞄準後按 SPACE。`, 1500);
       return;
     }
+    if (state.mode === "tournament" && state.tournamentRoundComplete) {
+      state.tournamentRoundComplete = false;
+      state.playerScore = 0;
+      state.cpuScore = 0;
+      state.timeLeft = 90;
+      state.combo = 1;
+      hideModal(ui.goalModal);
+      state.goalLock = false;
+      state.paused = false;
+      resetPositions(true);
+      configureModeUi();
+      showToast(`第 ${state.tournamentRound + 1} / 3 局！先贏兩局就能捧杯。`, 1600);
+      updateUi(true);
+      return;
+    }
     resetPositions(true);
-    showToast("重新開球！這次換你進攻。", 1200);
+    showToast(state.mode === "tournament" ? "重新開球！本局繼續。" : "重新開球！這次換你進攻。", 1200);
   }
 
   function update(dt) {
@@ -915,7 +987,7 @@
       drawAimGuide();
       for (const player of players.slice().sort((a, b) => a.y - b.y)) drawPlayer(player);
     }
-    if (state.mode === "quick" && state.moveTargetActive) drawMoveTarget();
+    if ((state.mode === "quick" || state.mode === "tournament") && state.moveTargetActive) drawMoveTarget();
     drawBall();
     drawParticles();
     ctx.restore();
@@ -1200,15 +1272,19 @@
     document.querySelectorAll(".roster-item[data-player-id]").forEach((button) => button.addEventListener("click", () => selectPlayer(button.dataset.playerId)));
     document.querySelectorAll(".mode-card").forEach((button) => button.addEventListener("click", () => {
       const selectedMode = button.dataset.mode;
-      if (selectedMode !== "quick" && selectedMode !== "penalty") {
-        showToast(selectedMode === "tournament" ? "錦標賽正在準備中，先來一場快速賽吧！" : "故事模式正在製作中，敬請期待！", 1700);
+      if (selectedMode !== "quick" && selectedMode !== "penalty" && selectedMode !== "tournament") {
+        showToast("故事模式正在製作中，敬請期待！", 1700);
         return;
       }
-      state.selectedMode = selectedMode === "penalty" ? "penalty" : "quick";
+      state.selectedMode = selectedMode === "penalty" ? "penalty" : selectedMode === "tournament" ? "tournament" : "quick";
       document.querySelectorAll(".mode-card").forEach((item) => item.classList.remove("selected"));
       button.classList.add("selected");
-      ui.start.innerHTML = state.selectedMode === "penalty" ? '<span class="button-icon">🎯</span> 開始點球挑戰' : '<span class="button-icon">⚽</span> 開始 3v3 快速賽';
-      showToast(state.selectedMode === "penalty" ? "已選擇點球挑戰，按上方按鈕開始。" : "已選擇快速賽，準備開球！", 1300);
+      ui.start.innerHTML = state.selectedMode === "penalty"
+        ? '<span class="button-icon">🎯</span> 開始點球挑戰'
+        : state.selectedMode === "tournament"
+          ? '<span class="button-icon">🏆</span> 開始錦標賽'
+          : '<span class="button-icon">⚽</span> 開始 3v3 快速賽';
+      showToast(state.selectedMode === "penalty" ? "已選擇點球挑戰，按上方按鈕開始。" : state.selectedMode === "tournament" ? "已選擇錦標賽，先贏兩局就能捧杯。" : "已選擇快速賽，準備開球！", 1300);
     }));
     setupJoystick(); setupActionButtons(); setupKeyboard();
     window.addEventListener("resize", resizeCanvas);
@@ -1223,7 +1299,7 @@
       setMoveTarget(point);
     });
     canvas.addEventListener("pointermove", (event) => {
-      if (!state.active || state.paused || state.mode !== "quick" || !(event.buttons & 1)) return;
+      if (!state.active || state.paused || (state.mode !== "quick" && state.mode !== "tournament") || !(event.buttons & 1)) return;
       event.preventDefault();
       setMoveTarget(canvasPoint(event));
     });
