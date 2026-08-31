@@ -25,6 +25,7 @@ var red_player_texture: Texture2D = preload("res://assets/generated/character-re
 var goalkeeper_dive_texture: Texture2D = preload("res://assets/generated/goalkeeper-dive-v2.png")
 var trophy_texture: Texture2D = preload("res://assets/generated/trophy-badge-v2.png")
 var menu_hero_team_texture: Texture2D = preload("res://assets/generated/menu-hero-team-v3.png")
+var main_cast_lineup_texture: Texture2D = preload("res://assets/generated/main-cast-lineup-v1.png")
 var roster_portrait_strip_texture: Texture2D = preload("res://assets/generated/roster-portrait-strip-v3.png")
 var goal_celebration_texture: Texture2D = preload("res://assets/generated/goal-celebration-card-v3.png")
 var mode_quick_texture: Texture2D = preload("res://assets/generated/mode-quick-match-v1.png")
@@ -426,7 +427,7 @@ func _build_menu_ui() -> void:
 	var hero := _panel(menu_ui, Rect2(274, 88, 646, 306), Color("#0b3c77", .46), 24)
 	hero.clip_contents = true
 	menu_hero_art = TextureRect.new()
-	menu_hero_art.texture = menu_hero_team_texture
+	menu_hero_art.texture = main_cast_lineup_texture
 	# Keep the generated 3:2 illustration intact and anchor it to the right;
 	# cover-cropping would cut the captain's ears and the ball trail.
 	menu_hero_art.position = Vector2(187, 0)

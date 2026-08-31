@@ -52,6 +52,7 @@ python3 -m http.server 8000
 - `assets/maomao-mascot.png`：提供的角色參考圖（透明 PNG）
 - `assets/generated/menu-stadium-background-v2.png`：主選單生成式球場背景
 - `assets/generated/menu-hero-team-v3.png`：主選單三人英雄卡（藍髮隊長與兩位貓咪隊友）
+- `assets/generated/main-cast-lineup-v1.png`：主選單主角群四人陣容（藍隊三人與紅隊對手）
 - `assets/generated/roster-portrait-strip-v3.png`：三位先發角色名冊肖像條
 - `assets/generated/hero-action-v2.png`：主角動作精靈（透明 PNG）
 - `assets/generated/cat-teammates-v2.png`：隊友雙人展示精靈（透明 PNG）
