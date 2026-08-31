@@ -41,6 +41,7 @@ var crowd: Array = []
 
 var game_active := false
 var game_mode := "quick"
+var selected_player_id := "blue-captain"
 var paused := false
 var goal_lock := false
 var final_match := false
@@ -88,6 +89,11 @@ var footer_hint_label: Label
 var action_buttons: Dictionary = {}
 var match_header_label: Label
 var match_mode_label: Label
+var captain_portrait_sprite: Sprite2D
+var captain_name_label: Label
+var captain_role_label: Label
+var team_row_labels: Array = []
+var roster_rows: Dictionary = {}
 var menu_mascot: Sprite2D
 var menu_teammates_art: Sprite2D
 var menu_hero_art: TextureRect
@@ -352,8 +358,21 @@ func _build_menu_ui() -> void:
 	var roster := ["✦  喵白白", "●  喵布布", "◆  喵小白"]
 	var roles := ["前鋒 · 速度型", "中場 · 技巧型", "守門 · 防守型"]
 	var ratings := ["92", "86", "79"]
+	var roster_ids := ["blue-captain", "blue-mid", "blue-keeper"]
 	for i in range(roster.size()):
+		var roster_id: String = roster_ids[i]
 		var row := _panel(roster_panel, Rect2(14, 68 + i * 91, 200, 76), Color("#031a43", .72), 12)
+		roster_rows[roster_id] = row
+		var select_button := Button.new()
+		select_button.position = Vector2.ZERO
+		select_button.size = Vector2(200, 76)
+		select_button.focus_mode = Control.FOCUS_NONE
+		select_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		select_button.add_theme_stylebox_override("normal", _style_box(Color.TRANSPARENT, Color.TRANSPARENT, 12))
+		select_button.add_theme_stylebox_override("hover", _style_box(Color("#1d5b96", .18), Color("#82dfff", .55), 12))
+		select_button.add_theme_stylebox_override("pressed", _style_box(Color("#133f79", .3), Color("#ffdf85", .78), 12))
+		select_button.pressed.connect(_select_player.bind(roster_id))
+		row.add_child(select_button)
 		var portrait := TextureRect.new()
 		var roster_textures: Array = [captain_player_texture, calico_player_texture, white_player_texture]
 		portrait.texture = roster_textures[i]
@@ -369,6 +388,7 @@ func _build_menu_ui() -> void:
 		_label(row, ["速度", "技巧", "防守"][i], Vector2(164, 36), Vector2(32, 16), 8, text_muted)
 		var stat_bg := ColorRect.new(); stat_bg.color = Color("#173d6b"); stat_bg.position = Vector2(53, 58); stat_bg.size = Vector2(105, 6); stat_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE; row.add_child(stat_bg)
 		var stat_fill := ColorRect.new(); stat_fill.color = Color("#ffcb55") if i == 0 else Color("#6ddaff"); stat_fill.position = Vector2(53, 58); stat_fill.size = Vector2(105.0 * float(int(ratings[i])) / 100.0, 6); stat_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE; row.add_child(stat_fill)
+	_refresh_roster_selection()
 
 	# Central hero card with a much stronger mascot focus and a small special-move card.
 	var hero := _panel(menu_ui, Rect2(274, 88, 646, 306), Color("#0b3c77", .46), 24)
@@ -471,6 +491,54 @@ func _build_menu_ui() -> void:
 	_label(mode_panel, "✧  先拿到 3 分或時間結束時比分較高者獲勝", Vector2(16, 220), Vector2(274, 16), 7, text_muted)
 
 
+func _refresh_roster_selection() -> void:
+	for player_id in roster_rows.keys():
+		var row: Panel = roster_rows[player_id]
+		var selected: bool = str(player_id) == selected_player_id
+		row.add_theme_stylebox_override("panel", _style_box(Color("#123f75", .92) if selected else Color("#031a43", .72), Color("#ffdf85", .82) if selected else panel_border, 12))
+
+
+func _player_ability(player: Dictionary) -> String:
+	match str(player.get("id", "")):
+		"blue-mid": return "精準傳球與盤帶"
+		"blue-keeper": return "穩定撲救與回防"
+		_: return "高速衝刺射門"
+
+
+func _update_captain_card() -> void:
+	var player := _user_player()
+	if player.is_empty(): return
+	var texture: Texture2D = captain_player_texture
+	match str(player.get("kind", "captain")):
+		"calico": texture = calico_player_texture
+		"whitecat": texture = white_player_texture
+		_: texture = captain_player_texture
+	if is_instance_valid(captain_portrait_sprite): captain_portrait_sprite.texture = texture
+	if is_instance_valid(captain_name_label): captain_name_label.text = str(player["name"])
+	if is_instance_valid(captain_role_label): captain_role_label.text = _player_ability(player)
+	var team_ids := ["blue-captain", "blue-mid", "blue-keeper"]
+	var team_ratings := [92, 86, 79]
+	for i in range(mini(team_row_labels.size(), team_ids.size())):
+		var teammate := _get_player(team_ids[i])
+		if teammate.is_empty(): continue
+		var is_selected: bool = str(teammate["id"]) == selected_player_id
+		team_row_labels[i].text = "●  %s      %s · %s      %d" % [str(teammate["name"]), str(teammate["role"]), "1P" if is_selected else "AI", int(team_ratings[i])]
+		team_row_labels[i].add_theme_color_override("font_color", Color("#d3e7ff") if is_selected else text_muted)
+
+
+func _select_player(player_id: String) -> void:
+	if game_active: return
+	var selected := _get_player(player_id)
+	if selected.is_empty() or str(selected["team"]) != BLUE: return
+	selected_player_id = player_id
+	for player in players:
+		if player["team"] == BLUE: player["controlled"] = str(player["id"]) == selected_player_id
+	_refresh_roster_selection()
+	_update_captain_card()
+	_show_toast("%s 已加入先發 · %s" % [str(selected["name"]), str(selected["role"])], 1.3)
+	queue_redraw()
+
+
 func _build_match_ui() -> void:
 	match_ui = _full_control()
 	# Let empty pitch space pass pointer/touch events to the gameplay node while
@@ -499,15 +567,15 @@ func _build_match_ui() -> void:
 	# Side panel mirrors the concept art's captain / team / match-data cards.
 	var captain := _panel(match_ui, Rect2(963, 83, 289, 176), Color("#0a2c5c", .96), 16)
 	_label(captain, "目前操作                         1P", Vector2(14, 10), Vector2(255, 22), 11, Color("#b3d1ed"))
-	var portrait := Sprite2D.new()
-	portrait.texture = captain_player_texture
-	portrait.position = Vector2(52, 82)
-	portrait.scale = Vector2(.052, .052)
-	portrait.centered = true
-	portrait.z_index = 1
-	captain.add_child(portrait)
-	_label(captain, "喵白白", Vector2(101, 42), Vector2(150, 24), 16, text_main)
-	_label(captain, "高速衝刺射門", Vector2(101, 66), Vector2(160, 20), 10, text_muted)
+	captain_portrait_sprite = Sprite2D.new()
+	captain_portrait_sprite.texture = captain_player_texture
+	captain_portrait_sprite.position = Vector2(52, 82)
+	captain_portrait_sprite.scale = Vector2(.052, .052)
+	captain_portrait_sprite.centered = true
+	captain_portrait_sprite.z_index = 1
+	captain.add_child(captain_portrait_sprite)
+	captain_name_label = _label(captain, "喵白白", Vector2(101, 42), Vector2(150, 24), 16, text_main)
+	captain_role_label = _label(captain, "高速衝刺射門", Vector2(101, 66), Vector2(160, 20), 10, text_muted)
 	_label(captain, "Lv.12     68%", Vector2(101, 91), Vector2(150, 20), 10, Color("#a9d7f6"))
 	_label(captain, "喵力值", Vector2(15, 132), Vector2(100, 18), 10, Color("#c8d9f2"))
 	hud["skill"] = _label(captain, "42%", Vector2(238, 132), Vector2(35, 18), 10, gold)
@@ -516,9 +584,10 @@ func _build_match_ui() -> void:
 
 	var team_card := _panel(match_ui, Rect2(963, 270, 289, 156), Color("#0a2c5c", .96), 16)
 	_label(team_card, "場上隊友", Vector2(14, 10), Vector2(140, 22), 12, Color("#b3d1ed"))
+	team_row_labels.clear()
 	var team_rows := ["●  喵白白      前鋒 · 1P      92", "●  喵布布      中場 · AI      86", "●  喵小白      守門 · AI      79"]
 	for i in range(team_rows.size()):
-		_label(team_card, team_rows[i], Vector2(15, 40 + i * 34), Vector2(260, 24), 10, Color("#d3e7ff") if i == 0 else text_muted)
+		team_row_labels.append(_label(team_card, team_rows[i], Vector2(15, 40 + i * 34), Vector2(260, 24), 10, Color("#d3e7ff") if i == 0 else text_muted))
 
 	var stats := _panel(match_ui, Rect2(963, 437, 289, 145), Color("#0a2c5c", .96), 16)
 	_label(stats, "比賽資料                         LIVE", Vector2(14, 10), Vector2(260, 22), 11, Color("#b3d1ed"))
@@ -541,6 +610,7 @@ func _build_match_ui() -> void:
 	action_buttons["shoot"].button_up.connect(_finish_shoot)
 	aim_label = _label(match_ui, "長按射門蓄力", Vector2(735, 658), Vector2(180, 20), 10, Color("#ffe5a0"))
 	footer_hint_label = _label(match_ui, "⌁ 靠近足球自動控球   ·   SPACE 蓄力射門   ·   E 傳球   ·   SHIFT 衝刺", Vector2(210, 683), Vector2(700, 23), 10, text_muted)
+	_update_captain_card()
 
 
 func _build_help_overlay() -> void:
@@ -617,6 +687,8 @@ func _build_toast() -> void:
 
 func _start_match(mode: String = "quick") -> void:
 	game_mode = mode if mode == "penalty" else "quick"
+	for player in players:
+		if player["team"] == BLUE: player["controlled"] = str(player["id"]) == selected_player_id
 	game_active = true
 	paused = false
 	goal_lock = false
@@ -653,6 +725,7 @@ func _start_match(mode: String = "quick") -> void:
 	goal_overlay.visible = false
 	if is_instance_valid(goal_effect_art): goal_effect_art.visible = false
 	if is_instance_valid(goal_celebration_art): goal_celebration_art.visible = false
+	_update_captain_card()
 	_update_hud()
 	_show_toast("A / D 瞄準，SPACE 射門！" if game_mode == "penalty" else "開球！靠近足球就能自動控球。", 2.4)
 	queue_redraw()
@@ -685,6 +758,8 @@ func _quit_to_menu() -> void:
 	if is_instance_valid(menu_hero_art): menu_hero_art.visible = true
 	move_target_active = false
 	_configure_action_buttons()
+	_update_captain_card()
+	_refresh_roster_selection()
 	queue_redraw()
 
 
@@ -740,9 +815,9 @@ func _new_player(id: String, team: String, player_name: String, role: String, ki
 
 func _build_teams() -> void:
 	players.clear()
-	players.append(_new_player("blue-captain", BLUE, "喵白白", "前鋒", "captain", 310, 360, 265, true))
-	players.append(_new_player("blue-mid", BLUE, "喵布布", "中場", "calico", 236, 235, 224))
-	players.append(_new_player("blue-keeper", BLUE, "喵小白", "守門", "whitecat", 120, 360, 190))
+	players.append(_new_player("blue-captain", BLUE, "喵白白", "前鋒", "captain", 310, 360, 265, selected_player_id == "blue-captain"))
+	players.append(_new_player("blue-mid", BLUE, "喵布布", "中場", "calico", 236, 235, 224, selected_player_id == "blue-mid"))
+	players.append(_new_player("blue-keeper", BLUE, "喵小白", "守門", "whitecat", 120, 360, 190, selected_player_id == "blue-keeper"))
 	players.append(_new_player("red-striker", RED, "紅啵啵", "前鋒", "redcat", 970, 360, 218))
 	players.append(_new_player("red-mid", RED, "小栗子", "中場", "redcat", 1040, 235, 205))
 	players.append(_new_player("red-keeper", RED, "守門喵", "守門", "redcat", 1160, 360, 180))
@@ -773,6 +848,8 @@ func _now() -> float:
 
 
 func _user_player() -> Dictionary:
+	var selected := _get_player(selected_player_id)
+	if not selected.is_empty(): return selected
 	for player in players:
 		if player["controlled"]:
 			return player
@@ -879,7 +956,7 @@ func _update_penalty(delta: float) -> void:
 	keeper["y"] = lerpf(float(keeper["y"]), 360.0 + sin(_now() * 1.5) * 7.0, minf(1.0, delta * 3.0))
 	ball["x"] = 930.0
 	ball["y"] = 360.0
-	ball["owner"] = "blue-captain"
+	ball["owner"] = _user_player()["id"]
 	_update_hud()
 
 

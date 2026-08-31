@@ -8,6 +8,7 @@
       name="description"
       content="喵咪足球大戰：一款以 Q 版貓咪為主角的 2D 3v3 街機足球原型。"
     />
+    <link rel="icon" href="assets/maomao-mascot.png" />
     <title>喵咪足球大戰｜2D 3v3 Prototype</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
@@ -80,9 +81,9 @@
                 <span class="panel-mark">02</span>
               </div>
               <div class="roster-list">
-                <div class="roster-item"><span class="roster-avatar maid"><img src="assets/generated/character-maid-captain-v1.png" alt="喵白白" /></span><span><b>喵白白</b><small>前鋒 · Lv.12</small></span><span class="roster-stat">速度 <i style="--value: 92%"></i></span></div>
-                <div class="roster-item"><span class="roster-avatar calico"><img src="assets/generated/character-calico-midfielder-v1.png" alt="喵布布" /></span><span><b>喵布布</b><small>中場 · Lv.10</small></span><span class="roster-stat">技巧 <i style="--value: 86%"></i></span></div>
-                <div class="roster-item"><span class="roster-avatar keeper"><img src="assets/generated/character-white-goalkeeper-v1.png" alt="喵小白" /></span><span><b>喵小白</b><small>守門 · Lv.09</small></span><span class="roster-stat">防守 <i style="--value: 79%"></i></span></div>
+                <button class="roster-item selected" type="button" data-player-id="blue-captain" aria-pressed="true"><span class="roster-avatar maid"><img src="assets/generated/character-maid-captain-v1.png" alt="喵白白" /></span><span><b>喵白白</b><small>前鋒 · Lv.12</small></span><span class="roster-stat">速度 <i style="--value: 92%"></i></span></button>
+                <button class="roster-item" type="button" data-player-id="blue-mid" aria-pressed="false"><span class="roster-avatar calico"><img src="assets/generated/character-calico-midfielder-v1.png" alt="喵布布" /></span><span><b>喵布布</b><small>中場 · Lv.10</small></span><span class="roster-stat">技巧 <i style="--value: 86%"></i></span></button>
+                <button class="roster-item" type="button" data-player-id="blue-keeper" aria-pressed="false"><span class="roster-avatar keeper"><img src="assets/generated/character-white-goalkeeper-v1.png" alt="喵小白" /></span><span><b>喵小白</b><small>守門 · Lv.09</small></span><span class="roster-stat">防守 <i style="--value: 79%"></i></span></button>
               </div>
             </article>
 
@@ -144,9 +145,9 @@
               </article>
               <article class="side-card team-card">
                 <div class="side-card-heading"><span>場上隊友</span><span class="team-count">3 / 3</span></div>
-                <div class="mini-player active"><span class="mini-dot blue"></span><span><b>喵白白</b><small>前鋒 · 1P</small></span><strong>92</strong></div>
-                <div class="mini-player"><span class="mini-dot orange"></span><span><b>喵布布</b><small>中場 · AI</small></span><strong>86</strong></div>
-                <div class="mini-player"><span class="mini-dot white"></span><span><b>喵小白</b><small>守門 · AI</small></span><strong>79</strong></div>
+                <div class="mini-player active" data-player-id="blue-captain"><span class="mini-dot blue"></span><span><b>喵白白</b><small>前鋒 · 1P</small></span><strong>92</strong></div>
+                <div class="mini-player" data-player-id="blue-mid"><span class="mini-dot orange"></span><span><b>喵布布</b><small>中場 · AI</small></span><strong>86</strong></div>
+                <div class="mini-player" data-player-id="blue-keeper"><span class="mini-dot white"></span><span><b>喵小白</b><small>守門 · AI</small></span><strong>79</strong></div>
               </article>
               <article class="side-card match-stats-card">
                 <div class="side-card-heading"><span>比賽資料</span><span class="panel-mark">LIVE</span></div>

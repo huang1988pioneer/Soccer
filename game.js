@@ -59,6 +59,9 @@
     goalSubtitle: document.querySelector("#goal-subtitle"),
     goalPlayerScore: document.querySelector("#goal-player-score"),
     goalCpuScore: document.querySelector("#goal-cpu-score"),
+    captainName: document.querySelector(".captain-profile h3"),
+    captainRole: document.querySelector(".captain-profile p"),
+    captainPortrait: document.querySelector(".captain-portrait img"),
   };
 
   const WORLD = { width: 1280, height: 720, left: 48, right: 1232, top: 54, bottom: 666, goalTop: 258, goalBottom: 462 };
@@ -76,6 +79,7 @@
     active: false,
     mode: "quick",
     selectedMode: "quick",
+    selectedPlayerId: "blue-captain",
     paused: false,
     goalLock: false,
     finalMatch: false,
@@ -155,9 +159,9 @@
   function buildTeams() {
     players.length = 0;
     players.push(
-      createPlayer({ id: "blue-captain", team: TEAM.blue, name: "喵白白", number: 10, role: "前鋒", kind: "captain", x: 310, y: 360, baseSpeed: 265, controlled: true }),
-      createPlayer({ id: "blue-mid", team: TEAM.blue, name: "喵布布", number: 8, role: "中場", kind: "calico", x: 236, y: 235, baseSpeed: 224 }),
-      createPlayer({ id: "blue-keeper", team: TEAM.blue, name: "喵小白", number: 1, role: "守門", kind: "whitecat", x: 120, y: 360, baseSpeed: 190 }),
+      createPlayer({ id: "blue-captain", team: TEAM.blue, name: "喵白白", number: 10, role: "前鋒", kind: "captain", portrait: "assets/generated/character-maid-captain-v1.png", x: 310, y: 360, baseSpeed: 265, controlled: state.selectedPlayerId === "blue-captain" }),
+      createPlayer({ id: "blue-mid", team: TEAM.blue, name: "喵布布", number: 8, role: "中場", kind: "calico", portrait: "assets/generated/character-calico-midfielder-v1.png", x: 236, y: 235, baseSpeed: 224, controlled: state.selectedPlayerId === "blue-mid" }),
+      createPlayer({ id: "blue-keeper", team: TEAM.blue, name: "喵小白", number: 1, role: "守門", kind: "whitecat", portrait: "assets/generated/character-white-goalkeeper-v1.png", x: 120, y: 360, baseSpeed: 190, controlled: state.selectedPlayerId === "blue-keeper" }),
       createPlayer({ id: "red-striker", team: TEAM.red, name: "紅啵啵", number: 9, role: "前鋒", kind: "redcat", x: 970, y: 360, baseSpeed: 218 }),
       createPlayer({ id: "red-mid", team: TEAM.red, name: "小栗子", number: 7, role: "中場", kind: "redcat", x: 1040, y: 235, baseSpeed: 205 }),
       createPlayer({ id: "red-keeper", team: TEAM.red, name: "守門喵", number: 1, role: "守門", kind: "redcat", x: 1160, y: 360, baseSpeed: 180 }),
@@ -166,7 +170,7 @@
   buildTeams();
 
   const getPlayer = (id) => players.find((player) => player.id === id) || null;
-  const userPlayer = () => getPlayer("blue-captain");
+  const userPlayer = () => getPlayer(state.selectedPlayerId) || getPlayer("blue-captain");
   const teammates = (team) => players.filter((player) => player.team === team);
   const opponents = (team) => players.filter((player) => player.team !== team);
 
@@ -232,6 +236,9 @@
   function startMatch(mode = state.selectedMode) {
     state.mode = mode === "penalty" ? "penalty" : "quick";
     state.selectedMode = state.mode;
+    players.filter((player) => player.team === TEAM.blue).forEach((player) => {
+      player.controlled = player.id === state.selectedPlayerId;
+    });
     state.active = true;
     state.paused = false;
     state.goalLock = false;
@@ -262,6 +269,8 @@
     resetPositions(true);
     if (state.mode === "penalty") preparePenaltyRound();
     configureModeUi();
+    updateCaptainCard(userPlayer());
+    updateRosterSelection();
     showScreen("match");
     updateUi(true);
     showToast(state.mode === "penalty" ? "A / D 瞄準，SPACE 射門！" : "開球！靠近足球就能自動控球。", 2600);
@@ -284,6 +293,8 @@
     ui.start.innerHTML = '<span class="button-icon">⚽</span> 開始 3v3 快速賽';
     state.moveTargetActive = false;
     document.querySelectorAll(".mode-card").forEach((item) => item.classList.toggle("selected", item.dataset.mode === "quick"));
+    updateCaptainCard(userPlayer());
+    updateRosterSelection();
   }
 
   function togglePause(force) {
@@ -302,6 +313,51 @@
     ui.toast.classList.add("is-visible");
     clearTimeout(toastTimeout);
     toastTimeout = setTimeout(() => ui.toast.classList.remove("is-visible"), duration);
+  }
+
+  function playerAbility(player) {
+    if (!player) return "高速衝刺射門";
+    if (player.id === "blue-mid") return "精準傳球與盤帶";
+    if (player.id === "blue-keeper") return "穩定撲救與回防";
+    return "高速衝刺射門";
+  }
+
+  function updateCaptainCard(player = userPlayer()) {
+    if (!player) return;
+    if (ui.captainName) ui.captainName.textContent = player.name;
+    if (ui.captainRole) ui.captainRole.textContent = playerAbility(player);
+    if (ui.captainPortrait && player.portrait) {
+      ui.captainPortrait.src = player.portrait;
+      ui.captainPortrait.alt = player.name;
+    }
+    document.querySelectorAll(".mini-player[data-player-id]").forEach((row) => {
+      const selected = row.dataset.playerId === player.id;
+      row.classList.toggle("active", selected);
+      const role = row.querySelector("small");
+      if (role) role.textContent = `${getPlayer(row.dataset.playerId)?.role || ""} · ${selected ? "1P" : "AI"}`;
+    });
+    const tip = document.querySelector(".tip-card p");
+    if (tip) tip.innerHTML = `<b>小提醒</b><br />射門方向會跟著${player.name}面向改變，衝刺後接射門更容易突破守門員！`;
+  }
+
+  function updateRosterSelection() {
+    document.querySelectorAll(".roster-item[data-player-id]").forEach((item) => {
+      item.classList.toggle("selected", item.dataset.playerId === state.selectedPlayerId);
+      item.setAttribute("aria-pressed", item.dataset.playerId === state.selectedPlayerId ? "true" : "false");
+    });
+  }
+
+  function selectPlayer(playerId) {
+    if (state.active) return;
+    const selected = getPlayer(playerId);
+    if (!selected || selected.team !== TEAM.blue) return;
+    state.selectedPlayerId = selected.id;
+    players.filter((player) => player.team === TEAM.blue).forEach((player) => {
+      player.controlled = player.id === state.selectedPlayerId;
+    });
+    updateCaptainCard(selected);
+    updateRosterSelection();
+    showToast(`${selected.name} 已加入先發 · ${selected.role}`, 1300);
   }
 
   function setSkill(amount) {
@@ -501,7 +557,7 @@
       return;
     }
     keeper.y = lerp(keeper.y, WORLD.height / 2 + Math.sin(performance.now() / 660) * 7, clamp(dt * 3, 0, 1));
-    ball.x = 930; ball.y = WORLD.height / 2; ball.ownerId = "blue-captain";
+    ball.x = 930; ball.y = WORLD.height / 2; ball.ownerId = userPlayer().id;
   }
 
   function penaltyShoot() {
@@ -1101,6 +1157,7 @@
     ui.pauseQuit.addEventListener("click", quitToMenu);
     ui.goalContinue.addEventListener("click", continueAfterGoal);
     document.querySelectorAll("[data-close-modal]").forEach((button) => button.addEventListener("click", () => hideModal(document.getElementById(button.dataset.closeModal))));
+    document.querySelectorAll(".roster-item[data-player-id]").forEach((button) => button.addEventListener("click", () => selectPlayer(button.dataset.playerId)));
     document.querySelectorAll(".mode-card").forEach((button) => button.addEventListener("click", () => {
       const selectedMode = button.dataset.mode;
       if (selectedMode !== "quick" && selectedMode !== "penalty") {
@@ -1130,6 +1187,8 @@
       event.preventDefault();
       setMoveTarget(canvasPoint(event));
     });
+    updateCaptainCard();
+    updateRosterSelection();
     draw();
   }
 

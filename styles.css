@@ -159,3 +159,9 @@ main { width: min(1480px, calc(100% - 56px)); margin: 0 auto 42px; }
 .roster-avatar.keeper { background: linear-gradient(145deg, #d8edff, #4e72ba); }
 .roster-avatar img { width: 100%; height: 100%; object-fit: contain; object-position: center bottom; filter: drop-shadow(0 3px 4px rgba(0,0,0,.35)); }
 .captain-portrait img { object-fit: contain; object-position: center bottom; transform: scale(1.2); filter: drop-shadow(0 5px 5px rgba(0,0,0,.35)); }
+
+/* Roster entries are playable character selectors in the menu. */
+.roster-item { width: 100%; border: 1px solid transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: .2s ease; }
+.roster-item:hover, .roster-item.selected { border-color: rgba(117, 216, 255, .42); background: rgba(19, 70, 125, .5); transform: translateX(2px); }
+.roster-item.selected .roster-avatar { box-shadow: 0 0 0 2px rgba(255, 220, 102, .82), inset 0 0 12px rgba(1, 14, 40, .3); }
+.roster-item:focus-visible { outline: 2px solid rgba(255, 226, 102, .95); outline-offset: 2px; }
