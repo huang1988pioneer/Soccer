@@ -289,10 +289,12 @@ func _build_menu_ui() -> void:
 	hero.clip_contents = true
 	menu_hero_art = TextureRect.new()
 	menu_hero_art.texture = menu_hero_team_texture
-	menu_hero_art.position = Vector2.ZERO
-	menu_hero_art.size = Vector2(646, 306)
+	# Keep the generated 3:2 illustration intact and anchor it to the right;
+	# cover-cropping would cut the captain's ears and the ball trail.
+	menu_hero_art.position = Vector2(187, 0)
+	menu_hero_art.size = Vector2(459, 306)
 	menu_hero_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	menu_hero_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	menu_hero_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	menu_hero_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	menu_hero_art.modulate = Color(1.0, 1.0, 1.0, .92)
 	menu_hero_art.z_index = 0
