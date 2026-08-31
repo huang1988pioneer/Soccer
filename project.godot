@@ -6,6 +6,7 @@ config_version=5
 
 config/name="喵咪足球大戰"
 run/main_scene="res://Main.tscn"
+config/icon="res://assets/maomao-mascot.png"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 boot_splash/bg_color=Color(0.027, 0.071, 0.18, 1)
 boot_splash/show_image=false
@@ -23,6 +24,7 @@ window/handheld/orientation=1
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
 textures/default_filters/use_nearest_mipmap_filter=false
 environment/defaults/default_clear_color=Color(0.016, 0.032, 0.09, 1)
 

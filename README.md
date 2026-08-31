@@ -59,3 +59,15 @@ python3 -m http.server 8000
 - `assets/generated/trophy-badge-v2.png`：錦標賽按鈕獎盃圖示（透明 PNG）
 
 Godot 版以單一 GDScript 維持球場、物理、CPU 與互動邏輯，搭配生成式背景、角色與特效素材；不需要額外外掛或套件。
+
+## 平台匯出
+
+專案內的 `export_presets.cfg` 已設定 Windows Desktop、macOS、Android 與 iOS 四個 Godot 匯出預設。桌面與 Android 可在終端機直接匯出：
+
+```bash
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --export-release "Windows Desktop" build/windows/MaomaoSoccer.exe
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --export-release "macOS" build/macos/MaomaoSoccer.app
+/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --export-debug "Android" build/android/MaomaoSoccer.apk
+```
+
+Android 的 Godot 匯出預設刻意不綁定開發者憑證；若要交付可安裝的測試 APK，請再以自己的 keystore 簽章。iOS 匯出會先建立 `build/ios/MaomaoSoccer.xcodeproj`，需要已接受 Xcode 授權、有效 Apple Team ID 與 provisioning profile 才能由 Xcode 產生可安裝或上架的 IPA。
