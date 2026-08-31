@@ -64,6 +64,8 @@ var penalty_shot_duration := 0.58
 var penalty_shot_start := Vector2.ZERO
 var penalty_shot_target := Vector2.ZERO
 var penalty_shot_active := false
+var move_target := Vector2.ZERO
+var move_target_active := false
 
 var ui_layer: CanvasLayer
 var menu_ui: Control
@@ -119,6 +121,30 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not game_active:
 		return
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed:
+			_handle_field_pointer(mouse_event.position)
+			get_viewport().set_input_as_handled()
+			return
+	if event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		if touch_event.pressed:
+			_handle_field_pointer(touch_event.position)
+			get_viewport().set_input_as_handled()
+			return
+	if event is InputEventScreenDrag:
+		var drag_event := event as InputEventScreenDrag
+		if game_mode == "quick":
+			_set_move_target(_canvas_to_world(drag_event.position))
+			get_viewport().set_input_as_handled()
+			return
+	if event is InputEventMouseMotion:
+		var motion_event := event as InputEventMouseMotion
+		if game_mode == "quick" and (motion_event.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
+			_set_move_target(_canvas_to_world(motion_event.position))
+			get_viewport().set_input_as_handled()
+			return
 	if event is InputEventKey:
 		var key_event := event as InputEventKey
 		if key_event.keycode == KEY_ESCAPE and key_event.pressed:
@@ -144,6 +170,31 @@ func _unhandled_input(event: InputEvent) -> void:
 				KEY_R: _use_skill()
 				KEY_SHIFT: _dash()
 			get_viewport().set_input_as_handled()
+
+
+func _canvas_to_world(viewport_position: Vector2) -> Vector2:
+	var canvas_transform: Transform2D = get_viewport().get_canvas_transform()
+	return canvas_transform.affine_inverse() * viewport_position
+
+
+func _set_move_target(world_position: Vector2) -> void:
+	move_target = Vector2(
+		clampf(world_position.x, PITCH.position.x + 24.0, PITCH.end.x - 24.0),
+		clampf(world_position.y, PITCH.position.y + 24.0, PITCH.end.y - 24.0)
+	)
+	move_target_active = true
+
+
+func _handle_field_pointer(viewport_position: Vector2) -> void:
+	var world_position := _canvas_to_world(viewport_position)
+	if not PITCH.grow(20.0).has_point(world_position):
+		return
+	if game_mode == "penalty":
+		penalty_aim = clampf((world_position.y - WORLD_SIZE.y * .5) / 112.0, -1.0, 1.0)
+		_show_toast("已瞄準球門落點，按射門出腳。", .8)
+	else:
+		_set_move_target(world_position)
+		_show_toast("前往標記位置。", .65)
 
 
 # -----------------------------------------------------------------------------
@@ -384,6 +435,9 @@ func _build_menu_ui() -> void:
 
 func _build_match_ui() -> void:
 	match_ui = _full_control()
+	# Let empty pitch space pass pointer/touch events to the gameplay node while
+	# keeping the nested buttons and panels interactive.
+	match_ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui_layer.add_child(match_ui)
 	var top := _panel(match_ui, Rect2(28, 18, 1224, 52), Color("#0a2450", .96), 14)
 	_label(top, "●", Vector2(15, 11), Vector2(20, 28), 16, Color("#65e1a0"))
@@ -573,9 +627,9 @@ func _configure_action_buttons() -> void:
 	if action_buttons.has("shoot"):
 		action_buttons["shoot"].text = "⚽\n射門" if quick_mode else "🎯\n射門"
 	if is_instance_valid(aim_label):
-		aim_label.text = "長按射門蓄力" if quick_mode else "A / D 瞄準　SPACE 射門"
+			aim_label.text = "長按射門蓄力" if quick_mode else "A / D 瞄準　SPACE 射門"
 	if is_instance_valid(footer_hint_label):
-		footer_hint_label.text = "⌁ 靠近足球自動控球   ·   SPACE 蓄力射門   ·   E 傳球   ·   SHIFT 衝刺" if quick_mode else "⌁ W/S 或 A/D 瞄準射門   ·   SPACE 出腳   ·   5 球後結算"
+		footer_hint_label.text = "⌁ 點擊／拖曳球場移動   ·   SPACE 蓄力射門   ·   E 傳球   ·   SHIFT 衝刺" if quick_mode else "⌁ 點擊球門落點或 W/S 瞄準   ·   SPACE 出腳   ·   5 球後結算"
 
 
 func _quit_to_menu() -> void:
@@ -591,6 +645,7 @@ func _quit_to_menu() -> void:
 	menu_ui.visible = true
 	if is_instance_valid(menu_mascot): menu_mascot.visible = false
 	if is_instance_valid(menu_hero_art): menu_hero_art.visible = true
+	move_target_active = false
 	_configure_action_buttons()
 	queue_redraw()
 
@@ -671,6 +726,8 @@ func _reset_positions(kickoff := true) -> void:
 	ball["no_claim_until"] = _now() + .55
 	dash_timer = 0.0
 	dash_cooldown = 0.0
+	move_target = Vector2.ZERO
+	move_target_active = false
 
 
 func _now() -> float:
@@ -705,7 +762,17 @@ func _input_vector() -> Vector2:
 	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT): vector.x += 1.0
 	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP): vector.y -= 1.0
 	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN): vector.y += 1.0
-	return vector.normalized() if vector.length() > .01 else Vector2.ZERO
+	if vector.length() > .01:
+		move_target_active = false
+		return vector.normalized()
+	if move_target_active:
+		var player := _user_player()
+		var target_direction := move_target - Vector2(float(player["x"]), float(player["y"]))
+		if target_direction.length() <= 18.0:
+			move_target_active = false
+			return Vector2.ZERO
+		return target_direction.normalized()
+	return Vector2.ZERO
 
 
 func _update_game(delta: float) -> void:
@@ -1140,6 +1207,7 @@ func _draw() -> void:
 	for particle in particles:
 		var alpha := clampf(float(particle["life"]), 0.0, 1.0)
 		draw_circle(Vector2(float(particle["x"]), float(particle["y"])), float(particle["size"]), Color(particle["color"], alpha))
+	if move_target_active: _draw_move_target()
 	if shoot_charging: _draw_aim_guide()
 
 
@@ -1254,6 +1322,14 @@ func _draw_aim_guide() -> void:
 	var to := from + direction * (180.0 + charge * 350.0)
 	draw_dashed_line(from, to, Color(1.0, .88, .35, .52 + charge * .4), 5.0, 12.0)
 	draw_circle(from.lerp(to, .35 + charge * .2), 6.0 + charge * 6.0, Color("#ffdc5e"))
+
+
+func _draw_move_target() -> void:
+	var pulse := 1.0 + sin(_now() * 6.0) * .12
+	draw_circle(move_target, 18.0 * pulse, Color("#74e6ff", .12))
+	draw_arc(move_target, 14.0 * pulse, 0.0, TAU, 32, Color("#8deaff", .9), 2.0)
+	draw_line(move_target + Vector2(-7, 0), move_target + Vector2(7, 0), Color("#dffbff", .9), 2.0)
+	draw_line(move_target + Vector2(0, -7), move_target + Vector2(0, 7), Color("#dffbff", .9), 2.0)
 
 
 func _draw_player(player: Dictionary) -> void:

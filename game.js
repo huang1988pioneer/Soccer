@@ -104,6 +104,8 @@
     penaltyShotStart: { x: 930, y: WORLD.height / 2 },
     penaltyShotTarget: { x: WORLD.right + 18, y: WORLD.height / 2 },
     penaltyShotActive: false,
+    moveTarget: { x: 0, y: 0 },
+    moveTargetActive: false,
     joystick: { active: false, x: 0, y: 0, pointerId: null },
     keys: new Set(),
   };
@@ -184,6 +186,8 @@
     ball.noClaimUntil = performance.now() + 550;
     state.dashTimer = 0;
     state.dashCooldown = 0;
+    state.moveTarget = { x: 0, y: 0 };
+    state.moveTargetActive = false;
   }
 
   function showScreen(screen) {
@@ -219,8 +223,8 @@
       ui.aimHint.classList.remove("is-hidden");
     }
     if (ui.footerTip) ui.footerTip.innerHTML = isPenalty
-      ? "⌁ W/S 或 A/D 瞄準射門 · <b>SPACE</b> 出腳 · 5 球後結算"
-      : "⌁ 靠近足球自動控球 · <b>SPACE</b> 蓄力射門 · <b>E</b> 傳球 · <b>SHIFT</b> 衝刺";
+      ? "⌁ 點擊球門落點或 W/S 瞄準 · <b>SPACE</b> 出腳 · 5 球後結算"
+      : "⌁ 點擊／拖曳球場移動 · <b>SPACE</b> 蓄力射門 · <b>E</b> 傳球 · <b>SHIFT</b> 衝刺";
   }
 
   function startMatch(mode = state.selectedMode) {
@@ -248,6 +252,8 @@
     state.penaltyKeeperTargetY = WORLD.height / 2;
     state.penaltyShotTimer = 0;
     state.penaltyShotActive = false;
+    state.moveTarget = { x: 0, y: 0 };
+    state.moveTargetActive = false;
     hideModal(ui.helpModal);
     hideModal(ui.pauseModal);
     hideModal(ui.goalModal);
@@ -274,6 +280,7 @@
     showScreen("menu");
     ui.match.classList.remove("penalty-mode");
     ui.start.innerHTML = '<span class="button-icon">⚽</span> 開始 3v3 快速賽';
+    state.moveTargetActive = false;
     document.querySelectorAll(".mode-card").forEach((item) => item.classList.toggle("selected", item.dataset.mode === "quick"));
   }
 
@@ -311,7 +318,28 @@
       x = state.joystick.x;
       y = state.joystick.y;
     }
+    if (x || y) {
+      state.moveTargetActive = false;
+      return normalize(x, y);
+    }
+    if (state.moveTargetActive) {
+      const player = userPlayer();
+      const target = normalize(state.moveTarget.x - player.x, state.moveTarget.y - player.y);
+      if (target.length <= 18) {
+        state.moveTargetActive = false;
+        return { x: 0, y: 0, length: 0 };
+      }
+      return target;
+    }
     return normalize(x, y);
+  }
+
+  function setMoveTarget(point) {
+    state.moveTarget = {
+      x: clamp(point.x, WORLD.left + 24, WORLD.right - 24),
+      y: clamp(point.y, WORLD.top + 24, WORLD.bottom - 24),
+    };
+    state.moveTargetActive = true;
   }
 
   function moveToward(player, targetX, targetY, dt, speedScale = 1) {
@@ -811,6 +839,7 @@
       drawAimGuide();
       for (const player of players.slice().sort((a, b) => a.y - b.y)) drawPlayer(player);
     }
+    if (state.mode === "quick" && state.moveTargetActive) drawMoveTarget();
     drawBall();
     drawParticles();
     ctx.restore();
@@ -835,6 +864,18 @@
       ctx.beginPath(); ctx.moveTo(targetX - 9, targetY); ctx.lineTo(targetX + 9, targetY); ctx.moveTo(targetX, targetY - 9); ctx.lineTo(targetX, targetY + 9); ctx.stroke();
       ctx.restore();
     }
+  }
+
+  function drawMoveTarget() {
+    const pulse = 1 + Math.sin(performance.now() / 165) * .12;
+    ctx.save();
+    ctx.fillStyle = "rgba(116,230,255,.12)";
+    ctx.beginPath(); ctx.arc(state.moveTarget.x, state.moveTarget.y, 18 * pulse, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "rgba(141,234,255,.9)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(state.moveTarget.x, state.moveTarget.y, 14 * pulse, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = "rgba(223,251,255,.9)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(state.moveTarget.x - 7, state.moveTarget.y); ctx.lineTo(state.moveTarget.x + 7, state.moveTarget.y); ctx.moveTo(state.moveTarget.x, state.moveTarget.y - 7); ctx.lineTo(state.moveTarget.x, state.moveTarget.y + 7); ctx.stroke();
+    ctx.restore();
   }
 
   function drawStadium() {
@@ -1063,13 +1104,18 @@
     window.addEventListener("resize", resizeCanvas);
     canvas.addEventListener("pointerdown", (event) => {
       if (!state.active || state.paused) return;
+      event.preventDefault();
       const point = canvasPoint(event);
       if (state.mode === "penalty") {
         state.penaltyAim = clamp((point.y - WORLD.height / 2) / 112, -1, 1);
         return;
       }
-      const player = userPlayer();
-      if (point.x > WORLD.width * .52) player.facing = Math.atan2(point.y - player.y, point.x - player.x);
+      setMoveTarget(point);
+    });
+    canvas.addEventListener("pointermove", (event) => {
+      if (!state.active || state.paused || state.mode !== "quick" || !(event.buttons & 1)) return;
+      event.preventDefault();
+      setMoveTarget(canvasPoint(event));
     });
     draw();
   }
