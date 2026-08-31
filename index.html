@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#071a3d" />
+    <meta
+      name="description"
+      content="喵咪足球大戰：一款以 Q 版貓咪為主角的 2D 3v3 街機足球原型。"
+    />
+    <title>喵咪足球大戰｜2D 3v3 Prototype</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <button class="brand-button" id="brand-button" type="button" aria-label="回到主選單">
+          <span class="brand-paw">🐾</span>
+          <span>喵咪足球大戰</span>
+        </button>
+        <div class="topbar-stats" aria-label="玩家資源">
+          <span class="resource-pill"><span class="resource-icon coin">●</span><strong>12,680</strong></span>
+          <span class="resource-pill"><span class="resource-icon gem">◆</span><strong>2,350</strong></span>
+          <span class="resource-pill"><span class="resource-icon energy">ϟ</span><strong>120/120</strong></span>
+          <button class="icon-button" type="button" aria-label="設定" title="設定">⚙</button>
+        </div>
+      </header>
+
+      <main>
+        <section class="screen menu-screen is-active" id="menu-screen" aria-labelledby="menu-title">
+          <div class="hero-card">
+            <div class="hero-copy">
+              <span class="eyebrow"><span class="eyebrow-dot"></span> 2D ARCADE FOOTBALL · 3V3</span>
+              <h1 id="menu-title">喵咪<br /><em>足球大戰</em></h1>
+              <p class="hero-lede">
+                和喵白白、喵布布一起上場！用直覺的移動、傳球與蓄力射門，踢出你的第一個必殺進球。
+              </p>
+              <div class="hero-actions">
+                <button class="primary-button pulse-button" id="start-button" type="button">
+                  <span class="button-icon">⚽</span> 開始 3v3 快速賽
+                </button>
+                <button class="ghost-button" id="help-button" type="button">
+                  <span class="button-icon">?</span> 操作說明
+                </button>
+              </div>
+              <div class="hero-note"><span>✦</span> 一場只要 2 分鐘，現在就來試試手感！</div>
+            </div>
+            <div class="hero-visual" aria-hidden="true">
+              <div class="sun-orb"></div>
+              <div class="cloud cloud-a"></div>
+              <div class="cloud cloud-b"></div>
+              <div class="stadium-arc arc-a"></div>
+              <div class="stadium-arc arc-b"></div>
+              <div class="hero-spark spark-a">✦</div>
+              <div class="hero-spark spark-b">✦</div>
+              <div class="hero-spark spark-c">◆</div>
+              <div class="hero-ball">⚽</div>
+              <img class="mascot-image" src="assets/generated/hero-action-v2.png" alt="藍髮女僕貓咪喵白白的射門動作" />
+              <div class="mascot-tag"><span class="status-dot"></span> 喵白白 · 速度型前鋒</div>
+            </div>
+          </div>
+
+          <div class="menu-grid">
+            <article class="menu-panel feature-panel">
+              <div class="panel-heading">
+                <div><span class="panel-kicker">PLAY LOOP</span><h2>四步就能進球</h2></div>
+                <span class="panel-mark">01</span>
+              </div>
+              <div class="feature-steps">
+                <div class="feature-step"><span class="step-number">1</span><span><b>跑動</b><small>WASD / 虛擬搖桿</small></span></div>
+                <div class="feature-step"><span class="step-number">2</span><span><b>碰球</b><small>靠近球自動控球</small></span></div>
+                <div class="feature-step"><span class="step-number">3</span><span><b>蓄力射門</b><small>長按再放開</small></span></div>
+                <div class="feature-step"><span class="step-number">4</span><span><b>GOAL!</b><small>進球後重新開球</small></span></div>
+              </div>
+            </article>
+
+            <article class="menu-panel roster-panel">
+              <div class="panel-heading">
+                <div><span class="panel-kicker">YOUR TEAM</span><h2>喵咪先發陣容</h2></div>
+                <span class="panel-mark">02</span>
+              </div>
+              <div class="roster-list">
+                <div class="roster-item"><span class="roster-avatar maid">✦</span><span><b>喵白白</b><small>前鋒 · Lv.12</small></span><span class="roster-stat">速度 <i style="--value: 92%"></i></span></div>
+                <div class="roster-item"><span class="roster-avatar calico">●</span><span><b>喵布布</b><small>中場 · Lv.10</small></span><span class="roster-stat">技巧 <i style="--value: 86%"></i></span></div>
+                <div class="roster-item"><span class="roster-avatar keeper">◆</span><span><b>喵小白</b><small>守門 · Lv.09</small></span><span class="roster-stat">防守 <i style="--value: 79%"></i></span></div>
+              </div>
+            </article>
+
+            <article class="menu-panel mode-panel">
+              <div class="panel-heading">
+                <div><span class="panel-kicker">GAME MODES</span><h2>今天想玩哪一場？</h2></div>
+                <span class="panel-mark">03</span>
+              </div>
+              <div class="mode-cards">
+                <button class="mode-card selected" type="button" data-mode="quick"><span class="mode-art quick-art" aria-hidden="true">⚽</span><span><b>快速賽</b><small>2:00 · 對戰 CPU</small></span><span class="mode-arrow">→</span></button>
+                <button class="mode-card" type="button" data-mode="penalty"><span class="mode-art penalty-art" aria-hidden="true">🥅</span><span><b>點球挑戰</b><small>5 球制 · 瞄準射門</small></span><span class="mode-arrow">→</span></button>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="screen match-screen" id="match-screen" aria-labelledby="match-title" hidden>
+          <div class="match-toolbar">
+            <div class="match-heading"><span class="live-dot"></span><div><span class="panel-kicker">RIVERSIDE STADIUM</span><h2 id="match-title">快速賽 · 第 1 局</h2></div></div>
+            <div class="match-toolbar-actions">
+              <span class="keyboard-hint">按 <kbd>ESC</kbd> 暫停</span>
+              <button class="small-button" id="pause-button" type="button">Ⅱ 暫停</button>
+              <button class="small-button danger-button" id="quit-button" type="button">退出</button>
+            </div>
+          </div>
+
+          <div class="match-layout">
+            <div class="stadium-column">
+              <div class="scoreboard" aria-live="polite">
+                <div class="team-score blue-score"><span class="team-crest crest-blue">🐾</span><span><b>喵咪隊</b><small>PLAYER</small></span><strong id="player-score">0</strong></div>
+                <div class="match-clock"><span id="match-time">2:00</span><small>快速賽</small></div>
+                <div class="team-score red-score"><strong id="cpu-score">0</strong><span><b>紅隊</b><small>CPU · NOVICE</small></span><span class="team-crest crest-red">🐱</span></div>
+              </div>
+              <div class="canvas-frame">
+                <canvas id="game-canvas" width="1280" height="720" aria-label="2D 足球比賽畫面"></canvas>
+                <div class="canvas-badge"><span class="live-dot"></span> LIVE</div>
+                <div class="aim-hint" id="aim-hint">長按射門蓄力</div>
+              </div>
+              <div class="mobile-controls" aria-label="觸控操作">
+                <div class="joystick" id="joystick" role="application" aria-label="移動搖桿"><div class="joystick-ring"></div><div class="joystick-knob" id="joystick-knob"></div><span>移動</span></div>
+                <div class="action-pad">
+                  <button class="action-button pass-action" data-action="pass" type="button"><span>↗</span><small>傳球</small></button>
+                  <button class="action-button shoot-action" data-action="shoot" type="button"><span>⚽</span><small>射門</small></button>
+                  <button class="action-button dash-action" data-action="dash" type="button"><span>➤</span><small>衝刺</small></button>
+                  <button class="action-button tackle-action" data-action="tackle" type="button"><span>✦</span><small>搶球</small></button>
+                  <button class="action-button skill-action" data-action="skill" type="button"><span>✧</span><small>必殺技</small></button>
+                </div>
+              </div>
+              <div class="game-footer-tip"><span>⌁</span> 靠近足球自動控球 · <b>SPACE</b> 蓄力射門 · <b>E</b> 傳球 · <b>SHIFT</b> 衝刺</div>
+            </div>
+
+            <aside class="match-sidebar">
+              <article class="side-card captain-card">
+                <div class="side-card-heading"><span>目前操作</span><span class="captain-label">1P</span></div>
+                <div class="captain-profile"><div class="captain-portrait"><img src="assets/maomao-mascot.png" alt="喵白白" /><span class="portrait-ring"></span></div><div><h3>喵白白</h3><p>高速衝刺射門</p><div class="level-line"><span>Lv.12</span><i><em id="xp-bar"></em></i><span>68%</span></div></div></div>
+                <div class="energy-meter"><div class="meter-label"><span>喵力值</span><b id="skill-value">42%</b></div><div class="meter-track"><i id="skill-bar"></i></div><small>進球、傳球與搶球都會累積</small></div>
+              </article>
+              <article class="side-card team-card">
+                <div class="side-card-heading"><span>場上隊友</span><span class="team-count">3 / 3</span></div>
+                <div class="mini-player active"><span class="mini-dot blue"></span><span><b>喵白白</b><small>前鋒 · 1P</small></span><strong>92</strong></div>
+                <div class="mini-player"><span class="mini-dot orange"></span><span><b>喵布布</b><small>中場 · AI</small></span><strong>86</strong></div>
+                <div class="mini-player"><span class="mini-dot white"></span><span><b>喵小白</b><small>守門 · AI</small></span><strong>79</strong></div>
+              </article>
+              <article class="side-card match-stats-card">
+                <div class="side-card-heading"><span>比賽資料</span><span class="panel-mark">LIVE</span></div>
+                <div class="stat-row"><span>射門</span><b id="shots-value">0</b></div>
+                <div class="stat-row"><span>傳球</span><b id="passes-value">0</b></div>
+                <div class="stat-row"><span>控球率</span><b id="possession-value">50%</b></div>
+                <div class="stat-row"><span>連擊</span><b class="combo-value" id="combo-value">x1</b></div>
+              </article>
+              <div class="tip-card"><span class="tip-icon">✧</span><p><b>小提醒</b><br />射門方向會跟著喵白白面向改變，衝刺後接射門更容易突破守門員！</p></div>
+            </aside>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="modal-backdrop" id="help-modal" hidden>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="help-title">
+        <button class="modal-close" data-close-modal="help-modal" type="button" aria-label="關閉">×</button>
+        <span class="panel-kicker">QUICK GUIDE</span><h2 id="help-title">3 分鐘學會喵咪足球</h2>
+        <div class="guide-grid">
+          <div class="guide-item"><kbd>W A S D</kbd><span>移動喵白白</span></div>
+          <div class="guide-item"><kbd>SPACE</kbd><span>長按蓄力，放開射門</span></div>
+          <div class="guide-item"><kbd>E</kbd><span>傳給前方隊友</span></div>
+          <div class="guide-item"><kbd>SHIFT</kbd><span>短暫衝刺（消耗體力）</span></div>
+          <div class="guide-item"><kbd>Q</kbd><span>鏟球／搶球</span></div>
+          <div class="guide-item"><kbd>ESC</kbd><span>暫停或返回選單</span></div>
+        </div>
+        <p class="modal-note">靠近足球會自動控球。進球後會重新開球，先拿到 3 分或時間結束時比分較高者獲勝。</p>
+        <button class="primary-button modal-start" id="guide-start-button" type="button">知道了，開始比賽！</button>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="pause-modal" hidden>
+      <div class="modal-card pause-card" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+        <span class="panel-kicker">MATCH PAUSED</span><h2 id="pause-title">先喘口氣吧！</h2>
+        <p>比賽已暫停，準備好就繼續踢。</p>
+        <div class="pause-actions"><button class="primary-button" id="resume-button" type="button">▶ 繼續比賽</button><button class="ghost-button" id="pause-quit-button" type="button">回到主選單</button></div>
+      </div>
+    </div>
+
+    <div class="modal-backdrop goal-backdrop" id="goal-modal" hidden>
+      <div class="goal-card" role="dialog" aria-modal="true" aria-labelledby="goal-title">
+        <div class="goal-rays"></div><span class="goal-kicker">NICE SHOT!</span><h2 id="goal-title">GOAL!</h2><p id="goal-subtitle">喵咪隊拿下一分</p><div class="goal-score"><strong id="goal-player-score">1</strong><span>—</span><strong id="goal-cpu-score">0</strong></div><button class="primary-button" id="goal-continue-button" type="button">繼續比賽 <span>→</span></button>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"><span class="toast-icon">✦</span><span id="toast-text"></span></div>
+    <script src="game.js" defer></script>
+  </body>
+</html>

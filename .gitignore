@@ -1,0 +1,10 @@
+# Godot generated editor/import data
+.godot/
+
+# macOS metadata
+.DS_Store
+
+# Local export/build output
+build/
+dist/
+export/
