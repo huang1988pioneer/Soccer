@@ -1094,7 +1094,12 @@
     ui.goalContinue.addEventListener("click", continueAfterGoal);
     document.querySelectorAll("[data-close-modal]").forEach((button) => button.addEventListener("click", () => hideModal(document.getElementById(button.dataset.closeModal))));
     document.querySelectorAll(".mode-card").forEach((button) => button.addEventListener("click", () => {
-      state.selectedMode = button.dataset.mode === "penalty" ? "penalty" : "quick";
+      const selectedMode = button.dataset.mode;
+      if (selectedMode !== "quick" && selectedMode !== "penalty") {
+        showToast(selectedMode === "tournament" ? "錦標賽正在準備中，先來一場快速賽吧！" : "故事模式正在製作中，敬請期待！", 1700);
+        return;
+      }
+      state.selectedMode = selectedMode === "penalty" ? "penalty" : "quick";
       document.querySelectorAll(".mode-card").forEach((item) => item.classList.remove("selected"));
       button.classList.add("selected");
       ui.start.innerHTML = state.selectedMode === "penalty" ? '<span class="button-icon">🎯</span> 開始點球挑戰' : '<span class="button-icon">⚽</span> 開始 3v3 快速賽';

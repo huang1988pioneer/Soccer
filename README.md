@@ -61,6 +61,10 @@ python3 -m http.server 8000
 - `assets/generated/red-player-v2.png`：紅隊球員精靈（透明 PNG）
 - `assets/generated/goalkeeper-dive-v2.png`：點球挑戰守門員撲救動作（透明 PNG）
 - `assets/generated/trophy-badge-v2.png`：錦標賽按鈕獎盃圖示（透明 PNG）
+- `assets/generated/mode-quick-match-v1.png`：快速賽主選單卡片插圖
+- `assets/generated/mode-tournament-v1.png`：錦標賽主選單卡片插圖
+- `assets/generated/mode-story-v1.png`：故事模式主選單卡片插圖
+- `assets/generated/mode-penalty-challenge-v1.png`：點球挑戰主選單卡片插圖
 
 Godot 版以單一 GDScript 維持球場、物理、CPU 與互動邏輯，搭配生成式背景、角色與特效素材；不需要額外外掛或套件。
 

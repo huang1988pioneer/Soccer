@@ -26,6 +26,10 @@ var trophy_texture: Texture2D = preload("res://assets/generated/trophy-badge-v2.
 var menu_hero_team_texture: Texture2D = preload("res://assets/generated/menu-hero-team-v3.png")
 var roster_portrait_strip_texture: Texture2D = preload("res://assets/generated/roster-portrait-strip-v3.png")
 var goal_celebration_texture: Texture2D = preload("res://assets/generated/goal-celebration-card-v3.png")
+var mode_quick_texture: Texture2D = preload("res://assets/generated/mode-quick-match-v1.png")
+var mode_tournament_texture: Texture2D = preload("res://assets/generated/mode-tournament-v1.png")
+var mode_story_texture: Texture2D = preload("res://assets/generated/mode-story-v1.png")
+var mode_penalty_texture: Texture2D = preload("res://assets/generated/mode-penalty-challenge-v1.png")
 var players: Array = []
 var ball := {
 	"x": 640.0, "y": 360.0, "vx": 0.0, "vy": 0.0,
@@ -285,6 +289,39 @@ func _tint_button(button: Button, normal: Color, hover: Color) -> void:
 	button.add_theme_stylebox_override("pressed", _style_box(normal.darkened(.2), Color("#fff0b0", .85), 11))
 
 
+func _mode_card_button(parent: Node, texture: Texture2D, title: String, subtitle: String, rect: Rect2, locked: bool = false) -> Button:
+	var button := Button.new()
+	button.position = rect.position
+	button.size = rect.size
+	button.text = ""
+	button.focus_mode = Control.FOCUS_NONE
+	button.add_theme_color_override("font_color", Color.TRANSPARENT)
+	button.add_theme_stylebox_override("normal", _style_box(Color("#0b2a5a", .86), panel_border, 11))
+	button.add_theme_stylebox_override("hover", _style_box(Color("#195388", .9), Color("#9aeaff", .72), 11))
+	button.add_theme_stylebox_override("pressed", _style_box(Color("#0d315f", .96), Color("#fff0b0", .84), 11))
+	var art := TextureRect.new()
+	art.texture = texture
+	art.position = Vector2.ZERO
+	art.size = rect.size
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	art.modulate = Color(1.0, 1.0, 1.0, .9 if not locked else .66)
+	button.add_child(art)
+	var shade := ColorRect.new()
+	shade.color = Color("#03142e", .78 if not locked else .86)
+	shade.position = Vector2(0.0, rect.size.y - 34.0)
+	shade.size = Vector2(rect.size.x, 34.0)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.add_child(shade)
+	_label(button, title, Vector2(8, rect.size.y - 32), Vector2(rect.size.x - 16, 16), 10, text_main)
+	_label(button, subtitle, Vector2(8, rect.size.y - 17), Vector2(rect.size.x - 16, 14), 8, Color("#c5def4"))
+	if locked:
+		var lock := _label(button, "LOCKED", Vector2(rect.size.x - 53, 7), Vector2(46, 14), 7, Color("#e1edff"))
+		lock.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	return button
+
+
 func _build_menu_ui() -> void:
 	menu_ui = _full_control()
 	ui_layer.add_child(menu_ui)
@@ -425,12 +462,15 @@ func _build_menu_ui() -> void:
 	_label(preview_panel, "01:32", Vector2(302, 193), Vector2(60, 22), 11, gold)
 	var mode_panel := _panel(menu_ui, Rect2(946, 408, 306, 240), Color("#0a356d", .9), 18)
 	_label(mode_panel, "遊戲模式", Vector2(16, 12), Vector2(180, 28), 17, text_main)
-	var mode_quick := _button(mode_panel, "⚽  快速賽\n2:00 · 對戰 CPU", Rect2(16, 53, 274, 67), false)
+	var mode_quick := _mode_card_button(mode_panel, mode_quick_texture, "快速賽", "2:00 · 對戰 CPU", Rect2(14, 49, 132, 80))
 	mode_quick.pressed.connect(_start_match)
-	var mode_penalty := _button(mode_panel, "🥅  點球挑戰\n5 球制 · 瞄準射門", Rect2(16, 130, 274, 67), false)
-	_tint_button(mode_penalty, Color("#6c4fb0", .92), Color("#896bd1", .96))
+	var mode_tournament := _mode_card_button(mode_panel, mode_tournament_texture, "錦標賽", "淘汰賽 · 即將開放", Rect2(160, 49, 132, 80), true)
+	mode_tournament.pressed.connect(func(): _show_toast("錦標賽正在準備中，先來一場快速賽吧！", 1.7))
+	var mode_story := _mode_card_button(mode_panel, mode_story_texture, "故事模式", "島嶼冒險 · 即將開放", Rect2(14, 137, 132, 80), true)
+	mode_story.pressed.connect(func(): _show_toast("故事模式正在製作中，敬請期待！", 1.7))
+	var mode_penalty := _mode_card_button(mode_panel, mode_penalty_texture, "點球挑戰", "5 球制 · 瞄準射門", Rect2(160, 137, 132, 80))
 	mode_penalty.pressed.connect(func(): _start_match("penalty"))
-	_label(mode_panel, "✧  先拿到 3 分或時間結束時比分較高者獲勝", Vector2(16, 207), Vector2(274, 18), 8, text_muted)
+	_label(mode_panel, "✧  先拿到 3 分或時間結束時比分較高者獲勝", Vector2(16, 220), Vector2(274, 16), 7, text_muted)
 
 
 func _build_match_ui() -> void:
