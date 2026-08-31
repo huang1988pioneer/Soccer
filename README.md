@@ -48,11 +48,14 @@ python3 -m http.server 8000
 - `index.html`／`styles.css`／`game.js`：零依賴瀏覽器替代版本
 - `assets/maomao-mascot.png`：提供的角色參考圖（透明 PNG）
 - `assets/generated/menu-stadium-background-v2.png`：主選單生成式球場背景
+- `assets/generated/menu-hero-team-v3.png`：主選單三人英雄卡（藍髮隊長與兩位貓咪隊友）
+- `assets/generated/roster-portrait-strip-v3.png`：三位先發角色名冊肖像條
 - `assets/generated/hero-action-v2.png`：主角動作精靈（透明 PNG）
 - `assets/generated/cat-teammates-v2.png`：隊友雙人展示精靈（透明 PNG）
 - `assets/generated/calico-player-v2.png`／`assets/generated/white-player-v2.png`：比賽中的藍隊隊友精靈（透明 PNG）
 - `assets/generated/special-shot-v2.png`：海浪射門必殺技圖示（透明 PNG）
 - `assets/generated/goal-effect-v2.png`：進球特效圖（透明 PNG）
+- `assets/generated/goal-celebration-card-v3.png`：進球彈窗慶祝插圖
 - `assets/generated/match-stadium-background-v2.png`：比賽中的 Riverside Stadium 生成式背景
 - `assets/generated/red-player-v2.png`：紅隊球員精靈（透明 PNG）
 - `assets/generated/goalkeeper-dive-v2.png`：點球挑戰守門員撲救動作（透明 PNG）

@@ -23,6 +23,9 @@ var match_background_texture: Texture2D = preload("res://assets/generated/match-
 var red_player_texture: Texture2D = preload("res://assets/generated/red-player-v2.png")
 var goalkeeper_dive_texture: Texture2D = preload("res://assets/generated/goalkeeper-dive-v2.png")
 var trophy_texture: Texture2D = preload("res://assets/generated/trophy-badge-v2.png")
+var menu_hero_team_texture: Texture2D = preload("res://assets/generated/menu-hero-team-v3.png")
+var roster_portrait_strip_texture: Texture2D = preload("res://assets/generated/roster-portrait-strip-v3.png")
+var goal_celebration_texture: Texture2D = preload("res://assets/generated/goal-celebration-card-v3.png")
 var players: Array = []
 var ball := {
 	"x": 640.0, "y": 360.0, "vx": 0.0, "vy": 0.0,
@@ -80,8 +83,10 @@ var match_header_label: Label
 var match_mode_label: Label
 var menu_mascot: Sprite2D
 var menu_teammates_art: Sprite2D
+var menu_hero_art: TextureRect
 var special_shot_art: Sprite2D
 var goal_effect_art: Sprite2D
+var goal_celebration_art: TextureRect
 
 var panel_blue := Color("#0a2b5b")
 var panel_border := Color("#4b8fc3", 0.48)
@@ -260,15 +265,38 @@ func _build_menu_ui() -> void:
 	var ratings := ["92", "86", "79"]
 	for i in range(roster.size()):
 		var row := _panel(roster_panel, Rect2(14, 68 + i * 91, 200, 76), Color("#031a43", .72), 12)
-		_label(row, roster[i], Vector2(10, 7), Vector2(132, 22), 12, Color("#fff4c4") if i == 0 else text_main)
-		_label(row, roles[i], Vector2(10, 31), Vector2(148, 18), 9, text_muted)
+		var strip_size: Vector2 = roster_portrait_strip_texture.get_size()
+		var portrait := TextureRect.new()
+		var portrait_atlas := AtlasTexture.new()
+		portrait_atlas.atlas = roster_portrait_strip_texture
+		portrait_atlas.region = Rect2(strip_size.x / 3.0 * float(i), 0.0, strip_size.x / 3.0, strip_size.y)
+		portrait.texture = portrait_atlas
+		portrait.position = Vector2(7, 7)
+		portrait.size = Vector2(39, 60)
+		portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(portrait)
+		_label(row, roster[i], Vector2(53, 7), Vector2(103, 22), 12, Color("#fff4c4") if i == 0 else text_main)
+		_label(row, roles[i], Vector2(53, 31), Vector2(105, 18), 9, text_muted)
 		_label(row, ratings[i], Vector2(165, 8), Vector2(28, 25), 16, gold)
 		_label(row, ["速度", "技巧", "防守"][i], Vector2(164, 36), Vector2(32, 16), 8, text_muted)
-		var stat_bg := ColorRect.new(); stat_bg.color = Color("#173d6b"); stat_bg.position = Vector2(10, 58); stat_bg.size = Vector2(175, 6); stat_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE; row.add_child(stat_bg)
-		var stat_fill := ColorRect.new(); stat_fill.color = Color("#ffcb55") if i == 0 else Color("#6ddaff"); stat_fill.position = Vector2(10, 58); stat_fill.size = Vector2(175.0 * float(int(ratings[i])) / 100.0, 6); stat_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE; row.add_child(stat_fill)
+		var stat_bg := ColorRect.new(); stat_bg.color = Color("#173d6b"); stat_bg.position = Vector2(53, 58); stat_bg.size = Vector2(105, 6); stat_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE; row.add_child(stat_bg)
+		var stat_fill := ColorRect.new(); stat_fill.color = Color("#ffcb55") if i == 0 else Color("#6ddaff"); stat_fill.position = Vector2(53, 58); stat_fill.size = Vector2(105.0 * float(int(ratings[i])) / 100.0, 6); stat_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE; row.add_child(stat_fill)
 
 	# Central hero card with a much stronger mascot focus and a small special-move card.
 	var hero := _panel(menu_ui, Rect2(274, 88, 646, 306), Color("#0b3c77", .46), 24)
+	hero.clip_contents = true
+	menu_hero_art = TextureRect.new()
+	menu_hero_art.texture = menu_hero_team_texture
+	menu_hero_art.position = Vector2.ZERO
+	menu_hero_art.size = Vector2(646, 306)
+	menu_hero_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	menu_hero_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	menu_hero_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	menu_hero_art.modulate = Color(1.0, 1.0, 1.0, .92)
+	menu_hero_art.z_index = 0
+	hero.add_child(menu_hero_art)
 	_label(hero, "2D · 3V3 · QUICK MATCH", Vector2(24, 18), Vector2(280, 22), 10, Color("#a5edff"))
 	var title := _label(hero, "喵咪\n足球大戰", Vector2(24, 48), Vector2(285, 125), 43, text_main)
 	title.add_theme_color_override("font_shadow_color", Color("#061328", .9))
@@ -286,6 +314,7 @@ func _build_menu_ui() -> void:
 	menu_mascot.position = Vector2(662, 244)
 	menu_mascot.scale = Vector2(.18, .18)
 	menu_mascot.centered = true
+	menu_mascot.visible = false
 	menu_mascot.z_index = 2
 	menu_ui.add_child(menu_mascot)
 	_label(menu_ui, "●  喵白白 · 速度型前鋒", Vector2(572, 366), Vector2(215, 22), 10, Color("#f1fbff"))
@@ -458,6 +487,18 @@ func _build_goal_overlay() -> void:
 	goal_overlay = _full_control(); goal_overlay.visible = false; ui_layer.add_child(goal_overlay)
 	var dim := ColorRect.new(); dim.color = Color("#020817", .62); dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); goal_overlay.add_child(dim)
 	var card := _panel(goal_overlay, Rect2(385, 155, 510, 390), Color("#11265d", .99), 24)
+	card.clip_contents = true
+	goal_celebration_art = TextureRect.new()
+	goal_celebration_art.texture = goal_celebration_texture
+	goal_celebration_art.position = Vector2(125, 48)
+	goal_celebration_art.size = Vector2(260, 260)
+	goal_celebration_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	goal_celebration_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	goal_celebration_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	goal_celebration_art.modulate = Color(1.0, 1.0, 1.0, .72)
+	goal_celebration_art.visible = false
+	goal_celebration_art.z_index = 0
+	card.add_child(goal_celebration_art)
 	goal_effect_art = Sprite2D.new()
 	goal_effect_art.texture = goal_effect_texture
 	goal_effect_art.position = Vector2(255, 95)
@@ -512,10 +553,12 @@ func _start_match(mode: String = "quick") -> void:
 	menu_ui.visible = false
 	match_ui.visible = true
 	if is_instance_valid(menu_mascot): menu_mascot.visible = false
+	if is_instance_valid(menu_hero_art): menu_hero_art.visible = false
 	help_overlay.visible = false
 	pause_overlay.visible = false
 	goal_overlay.visible = false
 	if is_instance_valid(goal_effect_art): goal_effect_art.visible = false
+	if is_instance_valid(goal_celebration_art): goal_celebration_art.visible = false
 	_update_hud()
 	_show_toast("A / D 瞄準，SPACE 射門！" if game_mode == "penalty" else "開球！靠近足球就能自動控球。", 2.4)
 	queue_redraw()
@@ -544,7 +587,8 @@ func _quit_to_menu() -> void:
 	pause_overlay.visible = false
 	match_ui.visible = false
 	menu_ui.visible = true
-	if is_instance_valid(menu_mascot): menu_mascot.visible = true
+	if is_instance_valid(menu_mascot): menu_mascot.visible = false
+	if is_instance_valid(menu_hero_art): menu_hero_art.visible = true
 	_configure_action_buttons()
 	queue_redraw()
 
@@ -709,6 +753,7 @@ func _prepare_penalty_round() -> void:
 	penalty_shot_timer = 0.0
 	penalty_shot_active = false
 	if is_instance_valid(goal_effect_art): goal_effect_art.visible = false
+	if is_instance_valid(goal_celebration_art): goal_celebration_art.visible = false
 	queue_redraw()
 
 
@@ -772,6 +817,7 @@ func _resolve_penalty_shot() -> void:
 	goal_lock = true
 	paused = true
 	if is_instance_valid(goal_effect_art): goal_effect_art.visible = penalty_goal
+	if is_instance_valid(goal_celebration_art): goal_celebration_art.visible = penalty_goal
 	_update_hud()
 	goal_overlay.visible = true
 
@@ -1024,6 +1070,7 @@ func _score_goal(team: String) -> void:
 	hud["goal_score"].text = "%d       —       %d" % [player_score, cpu_score]
 	goal_continue_button.text = "查看比賽結果  →" if final_match else "繼續比賽  →"
 	if is_instance_valid(goal_effect_art): goal_effect_art.visible = true
+	if is_instance_valid(goal_celebration_art): goal_celebration_art.visible = team == BLUE
 	_update_hud(); goal_overlay.visible = true
 
 
@@ -1035,6 +1082,7 @@ func _finish_match_by_time() -> void:
 	hud["goal_score"].text = "%d       —       %d" % [player_score, cpu_score]
 	goal_continue_button.text = "返回主選單  →"
 	if is_instance_valid(goal_effect_art): goal_effect_art.visible = false
+	if is_instance_valid(goal_celebration_art): goal_celebration_art.visible = false
 	_update_hud(); goal_overlay.visible = true
 
 
