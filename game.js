@@ -8,13 +8,15 @@
   const matchBackground = new Image();
   matchBackground.src = "assets/generated/match-stadium-background-v2.png";
   const generatedPlayers = {
+    captain: new Image(),
     calico: new Image(),
     whitecat: new Image(),
     redcat: new Image(),
   };
-  generatedPlayers.calico.src = "assets/generated/calico-player-v2.png";
-  generatedPlayers.whitecat.src = "assets/generated/white-player-v2.png";
-  generatedPlayers.redcat.src = "assets/generated/red-player-v2.png";
+  generatedPlayers.captain.src = "assets/generated/character-maid-captain-v1.png";
+  generatedPlayers.calico.src = "assets/generated/character-calico-midfielder-v1.png";
+  generatedPlayers.whitecat.src = "assets/generated/character-white-goalkeeper-v1.png";
+  generatedPlayers.redcat.src = "assets/generated/character-red-rival-v1.png";
   const goalkeeperDive = new Image();
   goalkeeperDive.src = "assets/generated/goalkeeper-dive-v2.png";
 
@@ -153,7 +155,7 @@
   function buildTeams() {
     players.length = 0;
     players.push(
-      createPlayer({ id: "blue-captain", team: TEAM.blue, name: "喵白白", number: 10, role: "前鋒", kind: "mascot", x: 310, y: 360, baseSpeed: 265, controlled: true }),
+      createPlayer({ id: "blue-captain", team: TEAM.blue, name: "喵白白", number: 10, role: "前鋒", kind: "captain", x: 310, y: 360, baseSpeed: 265, controlled: true }),
       createPlayer({ id: "blue-mid", team: TEAM.blue, name: "喵布布", number: 8, role: "中場", kind: "calico", x: 236, y: 235, baseSpeed: 224 }),
       createPlayer({ id: "blue-keeper", team: TEAM.blue, name: "喵小白", number: 1, role: "守門", kind: "whitecat", x: 120, y: 360, baseSpeed: 190 }),
       createPlayer({ id: "red-striker", team: TEAM.red, name: "紅啵啵", number: 9, role: "前鋒", kind: "redcat", x: 970, y: 360, baseSpeed: 218 }),
@@ -955,7 +957,8 @@
       ctx.strokeStyle = "rgba(255,226,102,.95)"; ctx.lineWidth = 3; ctx.setLineDash([5, 5]); ctx.beginPath(); ctx.arc(x, y + 3, 38 + Math.sin(performance.now()/170) * 2, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
       ctx.fillStyle = "#fff0a4"; roundedRect(x - 20, y - 51, 40, 17, 8); ctx.fill(); ctx.fillStyle = "#31548c"; ctx.font = "900 11px Inter, sans-serif"; ctx.textAlign = "center"; ctx.fillText("1P", x, y - 39);
     }
-    if (player.kind === "mascot" && mascot.complete) drawMascotPlayer(x, y, owner);
+    if (player.kind === "captain" && generatedPlayers.captain.complete) drawGeneratedPlayer(generatedPlayers.captain, x, y, owner);
+    else if (player.kind === "mascot" && mascot.complete) drawMascotPlayer(x, y, owner);
     else if (generatedPlayers[player.kind] && generatedPlayers[player.kind].complete) drawGeneratedPlayer(generatedPlayers[player.kind], x, y, owner);
     else drawVectorPlayer(player, x, y, owner);
     ctx.fillStyle = isUser ? "#eaf8ff" : "rgba(227,242,255,.8)"; ctx.font = "700 11px Inter, 'Noto Sans TC', sans-serif"; ctx.textAlign = "center"; ctx.fillText(player.name, x, y + 46);
@@ -971,8 +974,13 @@
   }
 
   function drawGeneratedPlayer(image, x, y, owner) {
-    const width = owner ? 92 : 84;
-    const height = owner ? 99 : 91;
+    // Preserve generated portrait proportions so ears, hair, tails and shoes
+    // remain readable at the same time as the match sprite stays compact.
+    const maxWidth = owner ? 102 : 92;
+    const maxHeight = owner ? 132 : 118;
+    const scale = Math.min(maxWidth / image.naturalWidth, maxHeight / image.naturalHeight);
+    const width = image.naturalWidth * scale;
+    const height = image.naturalHeight * scale;
     ctx.drawImage(image, x - width / 2, y - height * .86, width, height);
   }
 

@@ -60,6 +60,10 @@ python3 -m http.server 8000
 - `assets/generated/match-stadium-background-v2.png`：比賽中的 Riverside Stadium 生成式背景
 - `assets/generated/red-player-v2.png`：紅隊球員精靈（透明 PNG）
 - `assets/generated/goalkeeper-dive-v2.png`：點球挑戰守門員撲救動作（透明 PNG）
+- `assets/generated/character-maid-captain-v1.png`：喵白白藍髮隊長全身角色（透明 PNG）
+- `assets/generated/character-calico-midfielder-v1.png`：喵布布花貓中場全身角色（透明 PNG）
+- `assets/generated/character-white-goalkeeper-v1.png`：喵小白白貓守門員全身角色（透明 PNG）
+- `assets/generated/character-red-rival-v1.png`：紅隊紅棕虎斑前鋒全身角色（透明 PNG）
 - `assets/generated/trophy-badge-v2.png`：錦標賽按鈕獎盃圖示（透明 PNG）
 - `assets/generated/mode-quick-match-v1.png`：快速賽主選單卡片插圖
 - `assets/generated/mode-tournament-v1.png`：錦標賽主選單卡片插圖

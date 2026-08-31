@@ -15,12 +15,13 @@ var mascot_texture: Texture2D = preload("res://assets/maomao-mascot.png")
 var menu_background_texture: Texture2D = preload("res://assets/generated/menu-stadium-background-v2.png")
 var hero_action_texture: Texture2D = preload("res://assets/generated/hero-action-v2.png")
 var teammates_texture: Texture2D = preload("res://assets/generated/cat-teammates-v2.png")
-var calico_player_texture: Texture2D = preload("res://assets/generated/calico-player-v2.png")
-var white_player_texture: Texture2D = preload("res://assets/generated/white-player-v2.png")
+var captain_player_texture: Texture2D = preload("res://assets/generated/character-maid-captain-v1.png")
+var calico_player_texture: Texture2D = preload("res://assets/generated/character-calico-midfielder-v1.png")
+var white_player_texture: Texture2D = preload("res://assets/generated/character-white-goalkeeper-v1.png")
 var special_shot_texture: Texture2D = preload("res://assets/generated/special-shot-v2.png")
 var goal_effect_texture: Texture2D = preload("res://assets/generated/goal-effect-v2.png")
 var match_background_texture: Texture2D = preload("res://assets/generated/match-stadium-background-v2.png")
-var red_player_texture: Texture2D = preload("res://assets/generated/red-player-v2.png")
+var red_player_texture: Texture2D = preload("res://assets/generated/character-red-rival-v1.png")
 var goalkeeper_dive_texture: Texture2D = preload("res://assets/generated/goalkeeper-dive-v2.png")
 var trophy_texture: Texture2D = preload("res://assets/generated/trophy-badge-v2.png")
 var menu_hero_team_texture: Texture2D = preload("res://assets/generated/menu-hero-team-v3.png")
@@ -353,16 +354,13 @@ func _build_menu_ui() -> void:
 	var ratings := ["92", "86", "79"]
 	for i in range(roster.size()):
 		var row := _panel(roster_panel, Rect2(14, 68 + i * 91, 200, 76), Color("#031a43", .72), 12)
-		var strip_size: Vector2 = roster_portrait_strip_texture.get_size()
 		var portrait := TextureRect.new()
-		var portrait_atlas := AtlasTexture.new()
-		portrait_atlas.atlas = roster_portrait_strip_texture
-		portrait_atlas.region = Rect2(strip_size.x / 3.0 * float(i), 0.0, strip_size.x / 3.0, strip_size.y)
-		portrait.texture = portrait_atlas
+		var roster_textures: Array = [captain_player_texture, calico_player_texture, white_player_texture]
+		portrait.texture = roster_textures[i]
 		portrait.position = Vector2(7, 7)
 		portrait.size = Vector2(39, 60)
 		portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(portrait)
 		_label(row, roster[i], Vector2(53, 7), Vector2(103, 22), 12, Color("#fff4c4") if i == 0 else text_main)
@@ -502,7 +500,7 @@ func _build_match_ui() -> void:
 	var captain := _panel(match_ui, Rect2(963, 83, 289, 176), Color("#0a2c5c", .96), 16)
 	_label(captain, "目前操作                         1P", Vector2(14, 10), Vector2(255, 22), 11, Color("#b3d1ed"))
 	var portrait := Sprite2D.new()
-	portrait.texture = mascot_texture
+	portrait.texture = captain_player_texture
 	portrait.position = Vector2(52, 82)
 	portrait.scale = Vector2(.052, .052)
 	portrait.centered = true
@@ -742,7 +740,7 @@ func _new_player(id: String, team: String, player_name: String, role: String, ki
 
 func _build_teams() -> void:
 	players.clear()
-	players.append(_new_player("blue-captain", BLUE, "喵白白", "前鋒", "mascot", 310, 360, 265, true))
+	players.append(_new_player("blue-captain", BLUE, "喵白白", "前鋒", "captain", 310, 360, 265, true))
 	players.append(_new_player("blue-mid", BLUE, "喵布布", "中場", "calico", 236, 235, 224))
 	players.append(_new_player("blue-keeper", BLUE, "喵小白", "守門", "whitecat", 120, 360, 190))
 	players.append(_new_player("red-striker", RED, "紅啵啵", "前鋒", "redcat", 970, 360, 218))
@@ -1275,10 +1273,10 @@ func _draw_menu_backdrop() -> void:
 	draw_arc(Vector2(597, 537), 31.0, 0, TAU, 32, Color("#e9fff0", .7), 2.0)
 	draw_rect(Rect2(292, 496, 66, 82), Color("#e9fff0", .7), false, 2.0)
 	draw_rect(Rect2(836, 496, 66, 82), Color("#e9fff0", .7), false, 2.0)
-	var preview_blue := {"team": BLUE, "kind": "whitecat", "number": 10, "x": 492.0, "y": 532.0}
+	var preview_blue := {"team": BLUE, "kind": "captain", "number": 10, "x": 492.0, "y": 532.0}
 	var preview_blue_2 := {"team": BLUE, "kind": "calico", "number": 8, "x": 430.0, "y": 488.0}
 	var preview_red := {"team": RED, "kind": "redcat", "number": 9, "x": 695.0, "y": 535.0}
-	_draw_generated_player(white_player_texture, Vector2(preview_blue["x"], preview_blue["y"]), true)
+	_draw_generated_player(captain_player_texture, Vector2(preview_blue["x"], preview_blue["y"]), true)
 	_draw_generated_player(calico_player_texture, Vector2(preview_blue_2["x"], preview_blue_2["y"]), false)
 	_draw_generated_player(red_player_texture, Vector2(preview_red["x"], preview_red["y"]), false)
 	draw_circle(Vector2(600, 538), 9.0, Color("#fbfdff"))
@@ -1382,7 +1380,9 @@ func _draw_player(player: Dictionary) -> void:
 		draw_arc(position + Vector2(0, 3), 38.0 + sin(_now() * 6.0) * 2.0, 0, TAU, 48, Color("#ffe266", .95), 3.0)
 		draw_style_box(_style_box(Color("#fff0a4"), Color.TRANSPARENT, 7), Rect2(position + Vector2(-20, -51), Vector2(40, 17)))
 		draw_string(ThemeDB.fallback_font, position + Vector2(-20, -38), "1P", HORIZONTAL_ALIGNMENT_CENTER, 40, 11, Color("#31548c"))
-	if player["kind"] == "mascot":
+	if player["kind"] == "captain":
+		_draw_generated_player(captain_player_texture, position, owner)
+	elif player["kind"] == "mascot":
 		var sprite_size := Vector2(98, 110) if owner else Vector2(88, 99)
 		draw_texture_rect(mascot_texture, Rect2(position - Vector2(sprite_size.x / 2.0, sprite_size.y * .86), sprite_size), false)
 	elif player["kind"] == "calico":
@@ -1397,7 +1397,11 @@ func _draw_player(player: Dictionary) -> void:
 
 
 func _draw_generated_player(texture: Texture2D, position: Vector2, owner: bool) -> void:
-	var sprite_size := Vector2(92, 99) if owner else Vector2(84, 91)
+	var max_width := 102.0 if owner else 92.0
+	var max_height := 132.0 if owner else 118.0
+	var texture_size := texture.get_size()
+	var scale := minf(max_width / texture_size.x, max_height / texture_size.y)
+	var sprite_size := texture_size * scale
 	draw_texture_rect(texture, Rect2(position - Vector2(sprite_size.x / 2.0, sprite_size.y * .86), sprite_size), false)
 
 
