@@ -19,6 +19,12 @@
   generatedPlayers.redcat.src = "assets/generated/character-red-rival-v1.png";
   const goalkeeperDive = new Image();
   goalkeeperDive.src = "assets/generated/goalkeeper-dive-v2.png";
+  const actionIcons = {
+    shoot: new Image(),
+    skill: new Image(),
+  };
+  actionIcons.shoot.src = "assets/generated/action-shoot-icon-v1.png";
+  actionIcons.skill.src = "assets/generated/action-skill-icon-v1.png";
 
   const ui = {
     menu: document.querySelector("#menu-screen"),
@@ -98,6 +104,8 @@
     lastUiUpdate: 0,
     shootCharging: false,
     shootStartedAt: 0,
+    shootFxTimer: 0,
+    skillFxTimer: 0,
     dashTimer: 0,
     dashCooldown: 0,
     toastTimer: 0,
@@ -192,6 +200,8 @@
     ball.noClaimUntil = performance.now() + 550;
     state.dashTimer = 0;
     state.dashCooldown = 0;
+    state.shootFxTimer = 0;
+    state.skillFxTimer = 0;
     state.moveTarget = { x: 0, y: 0 };
     state.moveTargetActive = false;
   }
@@ -255,6 +265,8 @@
     state.combo = 1;
     state.comboTimer = 0;
     state.shootCharging = false;
+    state.shootFxTimer = 0;
+    state.skillFxTimer = 0;
     state.penaltyRound = 0;
     state.penaltyGoal = false;
     state.penaltyAim = 0;
@@ -283,6 +295,8 @@
     state.paused = false;
     state.goalLock = false;
     state.shootCharging = false;
+    state.shootFxTimer = 0;
+    state.skillFxTimer = 0;
     state.penaltyShotActive = false;
     state.mode = "quick";
     state.selectedMode = "quick";
@@ -627,6 +641,7 @@
     const direction = normalize(Math.cos(player.facing), Math.sin(player.facing));
     const speed = 490 + charge * 430;
     releaseBall(direction.x * speed, direction.y * speed, TEAM.blue);
+    state.shootFxTimer = .24;
     state.shots += 1;
     state.comboTimer = 4;
     setSkill(10 + charge * 7);
@@ -694,6 +709,7 @@
     const player = userPlayer();
     const direction = normalize(Math.cos(player.facing), Math.sin(player.facing));
     releaseBall(direction.x * 1050, direction.y * 1050, TEAM.blue);
+    state.skillFxTimer = .65;
     state.shots += 1;
     state.skill = 0;
     state.comboTimer = 7;
@@ -776,6 +792,8 @@
     if (state.timeLeft <= 0) { finishMatchByTime(); return; }
     state.dashTimer = Math.max(0, state.dashTimer - dt);
     state.dashCooldown = Math.max(0, state.dashCooldown - dt);
+    state.shootFxTimer = Math.max(0, state.shootFxTimer - dt);
+    state.skillFxTimer = Math.max(0, state.skillFxTimer - dt);
     state.comboTimer = Math.max(0, state.comboTimer - dt);
     if (state.comboTimer === 0) state.combo = 1;
     const player = userPlayer();
@@ -1070,6 +1088,28 @@
     ctx.fillStyle = "#fbfdff"; ctx.strokeStyle = "#172847"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     ctx.fillStyle = "#182a4b"; ctx.beginPath(); ctx.arc(ball.x, ball.y, 5, 0, Math.PI * 2); ctx.fill();
     for (let i = 0; i < 5; i += 1) { const angle = i * Math.PI * 2 / 5 + .28; ctx.beginPath(); ctx.moveTo(ball.x + Math.cos(angle) * 5, ball.y + Math.sin(angle) * 5); ctx.lineTo(ball.x + Math.cos(angle) * 11, ball.y + Math.sin(angle) * 11); ctx.stroke(); }
+    const selected = userPlayer();
+    if (state.shootCharging && selected && ball.ownerId === selected.id && actionIcons.shoot.complete && actionIcons.shoot.naturalWidth > 0) {
+      const charge = clamp((performance.now() - state.shootStartedAt) / 1000, 0, 1);
+      drawActionIcon(actionIcons.shoot, ball.x, ball.y, 68 + charge * 18, .72);
+    } else if (state.shootFxTimer > 0 && actionIcons.shoot.complete && actionIcons.shoot.naturalWidth > 0) {
+      drawActionIcon(actionIcons.shoot, ball.x, ball.y, 92, clamp(state.shootFxTimer / .24, 0, 1));
+    }
+    if (state.skillFxTimer > 0 && actionIcons.skill.complete && actionIcons.skill.naturalWidth > 0) {
+      const progress = clamp(state.skillFxTimer / .65, 0, 1);
+      drawActionIcon(actionIcons.skill, ball.x, ball.y, 126 + (1 - progress) * 18, progress);
+    }
+    ctx.restore();
+  }
+
+  function drawActionIcon(image, x, y, size, alpha = 1) {
+    if (!image || !image.naturalWidth || !image.naturalHeight) return;
+    const scale = Math.min(size / image.naturalWidth, size / image.naturalHeight);
+    const width = image.naturalWidth * scale;
+    const height = image.naturalHeight * scale;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(image, x - width / 2, y - height / 2, width, height);
     ctx.restore();
   }
 

@@ -70,6 +70,11 @@ python3 -m http.server 8000
 - `assets/generated/mode-tournament-v1.png`：錦標賽主選單卡片插圖
 - `assets/generated/mode-story-v1.png`：故事模式主選單卡片插圖
 - `assets/generated/mode-penalty-challenge-v1.png`：點球挑戰主選單卡片插圖
+- `assets/generated/action-pass-icon-v1.png`：傳球操作圖示（透明 PNG）
+- `assets/generated/action-shoot-icon-v1.png`：射門／蓄力操作圖示（透明 PNG）
+- `assets/generated/action-dash-icon-v1.png`：衝刺操作圖示（透明 PNG）
+- `assets/generated/action-tackle-icon-v1.png`：搶球操作圖示（透明 PNG）
+- `assets/generated/action-skill-icon-v1.png`：必殺技操作圖示（透明 PNG）
 
 Godot 版以單一 GDScript 維持球場、物理、CPU 與互動邏輯，搭配生成式背景、角色與特效素材；不需要額外外掛或套件。
 

@@ -165,3 +165,13 @@ main { width: min(1480px, calc(100% - 56px)); margin: 0 auto 42px; }
 .roster-item:hover, .roster-item.selected { border-color: rgba(117, 216, 255, .42); background: rgba(19, 70, 125, .5); transform: translateX(2px); }
 .roster-item.selected .roster-avatar { box-shadow: 0 0 0 2px rgba(255, 220, 102, .82), inset 0 0 12px rgba(1, 14, 40, .3); }
 .roster-item:focus-visible { outline: 2px solid rgba(255, 226, 102, .95); outline-offset: 2px; }
+
+/* Generated action art keeps the touch controls visually aligned with the
+   illustrated sprites used on the pitch. */
+.action-button span { display: block; width: 44px; height: 44px; font-size: 0; line-height: 1; background-repeat: no-repeat; background-position: center; background-size: contain; filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .34)); }
+.action-button small { position: relative; z-index: 1; }
+.pass-action span { background-image: url("assets/generated/action-pass-icon-v1.png"); }
+.shoot-action span { background-image: url("assets/generated/action-shoot-icon-v1.png"); }
+.dash-action span { background-image: url("assets/generated/action-dash-icon-v1.png"); }
+.tackle-action span { background-image: url("assets/generated/action-tackle-icon-v1.png"); }
+.skill-action span { background-image: url("assets/generated/action-skill-icon-v1.png"); }

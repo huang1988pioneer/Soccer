@@ -31,6 +31,11 @@ var mode_quick_texture: Texture2D = preload("res://assets/generated/mode-quick-m
 var mode_tournament_texture: Texture2D = preload("res://assets/generated/mode-tournament-v1.png")
 var mode_story_texture: Texture2D = preload("res://assets/generated/mode-story-v1.png")
 var mode_penalty_texture: Texture2D = preload("res://assets/generated/mode-penalty-challenge-v1.png")
+var action_pass_texture: Texture2D = preload("res://assets/generated/action-pass-icon-v1.png")
+var action_shoot_texture: Texture2D = preload("res://assets/generated/action-shoot-icon-v1.png")
+var action_dash_texture: Texture2D = preload("res://assets/generated/action-dash-icon-v1.png")
+var action_tackle_texture: Texture2D = preload("res://assets/generated/action-tackle-icon-v1.png")
+var action_skill_texture: Texture2D = preload("res://assets/generated/action-skill-icon-v1.png")
 var players: Array = []
 var ball := {
 	"x": 640.0, "y": 360.0, "vx": 0.0, "vy": 0.0,
@@ -58,6 +63,8 @@ var combo := 1
 var combo_timer := 0.0
 var shoot_charging := false
 var shoot_started_at := 0
+var shoot_fx_timer := 0.0
+var skill_fx_timer := 0.0
 var dash_timer := 0.0
 var dash_cooldown := 0.0
 var toast_timer := 0.0
@@ -87,6 +94,8 @@ var goal_continue_button: Button
 var aim_label: Label
 var footer_hint_label: Label
 var action_buttons: Dictionary = {}
+var action_labels: Dictionary = {}
+var action_icons: Dictionary = {}
 var match_header_label: Label
 var match_mode_label: Label
 var captain_portrait_sprite: Sprite2D
@@ -117,6 +126,8 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	shoot_fx_timer = maxf(0.0, shoot_fx_timer - delta)
+	skill_fx_timer = maxf(0.0, skill_fx_timer - delta)
 	if toast_timer > 0.0:
 		toast_timer -= delta
 		if toast_timer <= 0.0 and is_instance_valid(toast_panel):
@@ -288,6 +299,22 @@ func _button(parent: Node, text_value: String, rect: Rect2, primary := false) ->
 	button.add_theme_stylebox_override("pressed", _style_box(Color("#e1873f") if primary else Color("#0b315e"), Color("#fff0a8", .8), 13))
 	parent.add_child(button)
 	return button
+
+
+func _decorate_action_button(key: String, button: Button, label_text: String, texture: Texture2D) -> void:
+	button.text = ""
+	var icon := TextureRect.new()
+	icon.texture = texture
+	icon.position = Vector2((button.size.x - 38.0) * .5, 2.0)
+	icon.size = Vector2(38.0, 38.0)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.add_child(icon)
+	var label := _label(button, label_text, Vector2(0.0, button.size.y - 20.0), Vector2(button.size.x, 17.0), 10, text_main)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	action_icons[key] = icon
+	action_labels[key] = label
 
 
 func _tint_button(button: Button, normal: Color, hover: Color) -> void:
@@ -597,11 +624,16 @@ func _build_match_ui() -> void:
 	hud["combo"] = _label(stats, "連擊                                      x1", Vector2(15, 120), Vector2(260, 22), 10, gold)
 
 	# Touch-friendly action buttons. Desktop users can use E/Space/Shift/Q/R.
-	action_buttons["pass"] = _button(match_ui, "↗\n傳球", Rect2(650, 594, 74, 58), false)
-	action_buttons["shoot"] = _button(match_ui, "⚽\n射門", Rect2(733, 580, 88, 72), true)
-	action_buttons["dash"] = _button(match_ui, "➤\n衝刺", Rect2(830, 594, 74, 58), false)
-	action_buttons["tackle"] = _button(match_ui, "✦\n搶球", Rect2(563, 594, 74, 58), false)
-	action_buttons["skill"] = _button(match_ui, "✧\n必殺", Rect2(918, 594, 74, 58), false)
+	action_buttons["pass"] = _button(match_ui, "", Rect2(650, 594, 74, 58), false)
+	action_buttons["shoot"] = _button(match_ui, "", Rect2(733, 580, 88, 72), true)
+	action_buttons["dash"] = _button(match_ui, "", Rect2(830, 594, 74, 58), false)
+	action_buttons["tackle"] = _button(match_ui, "", Rect2(563, 594, 74, 58), false)
+	action_buttons["skill"] = _button(match_ui, "", Rect2(918, 594, 74, 58), false)
+	_decorate_action_button("pass", action_buttons["pass"], "傳球", action_pass_texture)
+	_decorate_action_button("shoot", action_buttons["shoot"], "射門", action_shoot_texture)
+	_decorate_action_button("dash", action_buttons["dash"], "衝刺", action_dash_texture)
+	_decorate_action_button("tackle", action_buttons["tackle"], "搶球", action_tackle_texture)
+	_decorate_action_button("skill", action_buttons["skill"], "必殺", action_skill_texture)
 	action_buttons["pass"].pressed.connect(_pass_ball)
 	action_buttons["dash"].pressed.connect(_dash)
 	action_buttons["tackle"].pressed.connect(_tackle)
@@ -705,6 +737,8 @@ func _start_match(mode: String = "quick") -> void:
 	combo = 1
 	combo_timer = 0.0
 	shoot_charging = false
+	shoot_fx_timer = 0.0
+	skill_fx_timer = 0.0
 	penalty_round = 0
 	penalty_goal = false
 	penalty_aim = 0.0
@@ -735,8 +769,10 @@ func _configure_action_buttons() -> void:
 	var quick_mode := game_mode == "quick"
 	for key in ["pass", "dash", "tackle", "skill"]:
 		if action_buttons.has(key): action_buttons[key].visible = quick_mode
-	if action_buttons.has("shoot"):
-		action_buttons["shoot"].text = "⚽\n射門" if quick_mode else "🎯\n射門"
+	if action_labels.has("shoot"):
+		action_labels["shoot"].text = "射門"
+	if action_icons.has("shoot"):
+		action_icons["shoot"].modulate = Color(1.0, 1.0, 1.0, 1.0 if quick_mode else .9)
 	if is_instance_valid(aim_label):
 			aim_label.text = "長按射門蓄力" if quick_mode else "A / D 瞄準　SPACE 射門"
 	if is_instance_valid(footer_hint_label):
@@ -749,6 +785,8 @@ func _quit_to_menu() -> void:
 	paused = false
 	goal_lock = false
 	shoot_charging = false
+	shoot_fx_timer = 0.0
+	skill_fx_timer = 0.0
 	penalty_shot_active = false
 	goal_overlay.visible = false
 	pause_overlay.visible = false
@@ -1171,6 +1209,7 @@ func _finish_shoot() -> void:
 	var direction := Vector2(cos(float(player["facing"])), sin(float(player["facing"]))).normalized()
 	var speed := 490.0 + charge * 430.0
 	_release_ball(direction * speed, BLUE)
+	shoot_fx_timer = .24
 	shots += 1; combo_timer = 4.0; _set_skill(10.0 + charge * 7.0)
 	_spawn_kick_particles(float(player["x"]) + direction.x * 30.0, float(player["y"]) + direction.y * 30.0, Color("#ffe17b"), 8)
 	_show_toast("Perfect Timing！超強射門！" if charge > .82 else "射門！把球送進球門！", 1.3)
@@ -1219,6 +1258,7 @@ func _use_skill() -> void:
 	if not _ensure_user_possession(): _show_toast("拿到球才能發動必殺技！", 1.1); return
 	var player := _user_player(); var direction := Vector2(cos(float(player["facing"])), sin(float(player["facing"]))).normalized()
 	_release_ball(direction * 1050.0, BLUE); shots += 1; skill = 0.0; combo_timer = 7.0
+	skill_fx_timer = .65
 	_spawn_kick_particles(float(player["x"]) + direction.x * 30.0, float(player["y"]) + direction.y * 30.0, Color("#ffdc62"), 22)
 	_show_toast("海浪射門！必殺技發動！", 1.8)
 
@@ -1525,3 +1565,19 @@ func _draw_ball() -> void:
 	for i in range(5):
 		var angle := float(i) * TAU / 5.0 + .28
 		draw_line(position + Vector2(cos(angle), sin(angle)) * 5.0, position + Vector2(cos(angle), sin(angle)) * 11.0, Color("#182a4b"), 2)
+	var selected := _user_player()
+	if shoot_charging and not selected.is_empty() and str(ball["owner"]) == str(selected["id"]):
+		var charge := clampf(float(Time.get_ticks_msec() - shoot_started_at) / 1000.0, 0.0, 1.0)
+		_draw_action_icon(action_shoot_texture, position, 68.0 + charge * 18.0, .72)
+	elif shoot_fx_timer > 0.0:
+		_draw_action_icon(action_shoot_texture, position, 92.0, clampf(shoot_fx_timer / .24, 0.0, 1.0))
+	if skill_fx_timer > 0.0:
+		_draw_action_icon(action_skill_texture, position, 126.0 + (1.0 - clampf(skill_fx_timer / .65, 0.0, 1.0)) * 18.0, clampf(skill_fx_timer / .65, 0.0, 1.0))
+
+
+func _draw_action_icon(texture: Texture2D, center: Vector2, size: float, alpha: float) -> void:
+	var texture_size := texture.get_size()
+	if texture_size.x <= 0.0 or texture_size.y <= 0.0: return
+	var scale := minf(size / texture_size.x, size / texture_size.y)
+	var draw_size := texture_size * scale
+	draw_texture_rect(texture, Rect2(center - draw_size * .5, draw_size), false, Color(1.0, 1.0, 1.0, alpha))
