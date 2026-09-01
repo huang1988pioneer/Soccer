@@ -17,7 +17,11 @@ const TEXT_MUTED := Color("#9ab3d5")
 const GOLD := Color("#ffd266")
 
 const PLAYER_MARGIN := Vector2(23.0, 24.0)
-const BALL_CLAIM_RADIUS := 45.0
+const BALL_CLAIM_RADIUS := 72.0
+const TACKLE_RADIUS := 112.0
+const BALL_HOLD_DISTANCE := 56.0
+const BALL_VISUAL_RADIUS := 16.0
+const GOAL_LINE_DEPTH := 22.0
 const BUMP_RADIUS := 45.0
 
 

@@ -19,7 +19,9 @@ func _draw() -> void:
 	if host.game_mode == "penalty":
 		_draw_penalty_mode()
 		return
-	for player in host.players:
+	var draw_players: Array = host.players.duplicate()
+	draw_players.sort_custom(func(a: SoccerPlayer, b: SoccerPlayer) -> bool: return a.y < b.y)
+	for player in draw_players:
 		_draw_player(player)
 	host.fx.draw_on(self)
 	_draw_ball()
@@ -159,28 +161,48 @@ func _draw_vector_player(player: SoccerPlayer, position: Vector2, owner: bool) -
 
 
 func _draw_ball() -> void:
+	draw_ball_on(self)
+
+
+func draw_ball_on(canvas: CanvasItem) -> void:
 	var ball: SoccerBall = host.ball
 	var position := ball.pos()
-	_draw_oval(position + Vector2(4, 12), Vector2(18, 7), Color("#05291e", 0.28))
+	var now := GameConst.now()
+	var pulse := 1.0 + sin(now * 7.2) * 0.07
+	var radius := GameConst.BALL_VISUAL_RADIUS * pulse
+	canvas.draw_set_transform(position + Vector2(3, 14), 0.0, Vector2(19, 8))
+	canvas.draw_circle(Vector2.ZERO, 1.0, Color("#05291e", 0.38))
+	canvas.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	var ring := Color("#70e0ff", 0.42) if ball.last_touch == GameConst.BLUE else Color("#ff7e65", 0.42)
 	if ball.has_owner():
-		draw_circle(position, 29, Color("#70e0ff", 0.20) if ball.last_touch == GameConst.BLUE else Color("#ff7e65", 0.2))
-	draw_circle(position, 14, Color("#fbfdff"))
-	draw_arc(position, 14, 0, TAU, 30, Color("#172847"), 2)
-	draw_circle(position, 5, Color("#182a4b"))
+		canvas.draw_circle(position, 34.0 * pulse, Color(ring, 0.22))
+	else:
+		canvas.draw_circle(position, 26.0 + sin(now * 8.0) * 3.0, Color("#ffe275", 0.16))
+	canvas.draw_circle(position, radius + 5.0, Color("#ffe066", 0.55))
+	canvas.draw_circle(position, radius, Color("#fbfdff"))
+	canvas.draw_arc(position, radius, 0, TAU, 36, Color("#172847"), 2.5)
+	canvas.draw_circle(position, 5.5, Color("#182a4b"))
 	for i in 5:
-		var angle := float(i) * TAU / 5.0 + 0.28
-		draw_line(position + Vector2(cos(angle), sin(angle)) * 5.0, position + Vector2(cos(angle), sin(angle)) * 11.0, Color("#182a4b"), 2)
+		var angle := float(i) * TAU / 5.0 + now * 1.8
+		canvas.draw_line(position + Vector2(cos(angle), sin(angle)) * 5.5, position + Vector2(cos(angle), sin(angle)) * (radius - 3.0), Color("#182a4b"), 2)
+	var marker := position + Vector2(0.0, -34.0 + sin(now * 6.4) * 4.0)
+	canvas.draw_colored_polygon(PackedVector2Array([
+		marker + Vector2(0, 12),
+		marker + Vector2(-9, -5),
+		marker + Vector2(9, -5)
+	]), Color("#ffe066"))
+	canvas.draw_arc(position, radius + 10.0, 0, TAU, 40, Color("#fff4b0", 0.85), 2.0)
 	var selected: SoccerPlayer = host.user_player()
 	if host.shoot_charging and selected != null and ball.owner_id == selected.id:
 		var charge: float = clampf(float(Time.get_ticks_msec() - int(host.shoot_started_at)) / 1000.0, 0.0, 1.0)
-		_draw_action_icon(host.action_shoot_texture, position, 68.0 + charge * 18.0, 0.72)
+		_draw_action_icon_on(canvas, host.action_shoot_texture, position, 68.0 + charge * 18.0, 0.72)
 	elif host.shoot_fx_timer > 0.0:
-		_draw_action_icon(host.action_shoot_texture, position, 92.0, clampf(host.shoot_fx_timer / 0.24, 0.0, 1.0))
+		_draw_action_icon_on(canvas, host.action_shoot_texture, position, 92.0, clampf(host.shoot_fx_timer / 0.24, 0.0, 1.0))
 	if host.skill_fx_timer > 0.0:
-		_draw_action_icon(host.action_skill_texture, position, 126.0 + (1.0 - clampf(host.skill_fx_timer / 0.65, 0.0, 1.0)) * 18.0, clampf(host.skill_fx_timer / 0.65, 0.0, 1.0))
+		_draw_action_icon_on(canvas, host.action_skill_texture, position, 126.0 + (1.0 - clampf(host.skill_fx_timer / 0.65, 0.0, 1.0)) * 18.0, clampf(host.skill_fx_timer / 0.65, 0.0, 1.0))
 
 
-func _draw_action_icon(texture: Texture2D, center: Vector2, size: float, alpha: float) -> void:
+func _draw_action_icon_on(canvas: CanvasItem, texture: Texture2D, center: Vector2, size: float, alpha: float) -> void:
 	if texture == null:
 		return
 	var texture_size := texture.get_size()
@@ -188,4 +210,8 @@ func _draw_action_icon(texture: Texture2D, center: Vector2, size: float, alpha: 
 		return
 	var scale := minf(size / texture_size.x, size / texture_size.y)
 	var draw_size := texture_size * scale
-	draw_texture_rect(texture, Rect2(center - draw_size * 0.5, draw_size), false, Color(1.0, 1.0, 1.0, alpha))
+	canvas.draw_texture_rect(texture, Rect2(center - draw_size * 0.5, draw_size), false, Color(1.0, 1.0, 1.0, alpha))
+
+
+func _draw_action_icon(texture: Texture2D, center: Vector2, size: float, alpha: float) -> void:
+	_draw_action_icon_on(self, texture, center, size, alpha)

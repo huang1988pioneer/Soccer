@@ -73,6 +73,11 @@
   };
 
   const WORLD = { width: 1280, height: 720, left: 48, right: 1232, top: 54, bottom: 666, goalTop: 258, goalBottom: 462 };
+  const BALL_CLAIM_RADIUS = 72;
+  const TACKLE_RADIUS = 112;
+  const BALL_HOLD_DISTANCE = 56;
+  const BALL_VISUAL_RADIUS = 16;
+  const GOAL_LINE_DEPTH = 22;
   const TEAM = { blue: "blue", red: "red" };
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
   const lerp = (a, b, t) => a + (b - a) * t;
@@ -570,8 +575,8 @@
     return best;
   }
 
-  function claimBall(player) {
-    if (performance.now() < ball.noClaimUntil) return false;
+  function claimBall(player, ignoreLock = false) {
+    if (!ignoreLock && performance.now() < ball.noClaimUntil) return false;
     ball.ownerId = player.id;
     ball.lastTouch = player.team;
     if (player.team === TEAM.blue) state.blueTouches += 1; else state.redTouches += 1;
@@ -581,44 +586,51 @@
 
   function autoPossession() {
     if (ball.ownerId || performance.now() < ball.noClaimUntil) return;
+    const user = userPlayer();
+    if (user && distance(user, ball) < BALL_CLAIM_RADIUS + 16) {
+      claimBall(user);
+      return;
+    }
     const candidates = players
       .map((player) => ({ player, d: distance(player, ball) }))
-      .filter((entry) => entry.d < 45)
+      .filter((entry) => entry.d < BALL_CLAIM_RADIUS)
       .sort((a, b) => a.d - b.d);
     if (candidates[0]) claimBall(candidates[0].player);
   }
 
-  function releaseBall(vx, vy, sourceTeam = TEAM.blue) {
+  function releaseBall(vx, vy, sourceTeam = TEAM.blue, claimLock = 550) {
     ball.ownerId = null;
     ball.vx = vx;
     ball.vy = vy;
     ball.lastTouch = sourceTeam;
-    ball.noClaimUntil = performance.now() + 170;
+    ball.noClaimUntil = performance.now() + claimLock;
   }
 
   function updateBall(dt) {
     const owner = getPlayer(ball.ownerId);
     if (owner) {
-      const offsetX = Math.cos(owner.facing) * 31;
-      const offsetY = Math.sin(owner.facing) * 31;
-      ball.x = owner.x + offsetX;
-      ball.y = owner.y + offsetY;
+      let fx = Math.cos(owner.facing);
+      let fy = Math.sin(owner.facing);
+      const length = Math.hypot(fx, fy);
+      if (length < 0.01) { fx = owner.team === TEAM.blue ? 1 : -1; fy = 0; }
+      else { fx /= length; fy /= length; }
+      ball.x = owner.x + fx * BALL_HOLD_DISTANCE;
+      ball.y = owner.y + fy * BALL_HOLD_DISTANCE + 8;
       ball.vx = owner.vx;
       ball.vy = owner.vy;
       return;
     }
     ball.x += ball.vx * dt;
     ball.y += ball.vy * dt;
-    const drag = Math.pow(.085, dt);
+    const speed = Math.hypot(ball.vx, ball.vy);
+    const drag = Math.pow(speed > 140 ? .58 : .12, dt);
     ball.vx *= drag;
     ball.vy *= drag;
     if (ball.y < WORLD.top + ball.r) { ball.y = WORLD.top + ball.r; ball.vy = Math.abs(ball.vy) * .72; }
     if (ball.y > WORLD.bottom - ball.r) { ball.y = WORLD.bottom - ball.r; ball.vy = -Math.abs(ball.vy) * .72; }
     const inGoalMouth = ball.y > WORLD.goalTop && ball.y < WORLD.goalBottom;
-    if (inGoalMouth && ball.x < -ball.r) { scoreGoal(TEAM.red); return; }
-    if (inGoalMouth && ball.x > WORLD.width + ball.r) { scoreGoal(TEAM.blue); return; }
-    // Outside the goal mouth the touchline behaves like a soft wall. Inside the
-    // mouth the ball is allowed to travel beyond the pitch until it crosses the net.
+    if (inGoalMouth && ball.x < WORLD.left - GOAL_LINE_DEPTH) { scoreGoal(TEAM.red); return; }
+    if (inGoalMouth && ball.x > WORLD.right + GOAL_LINE_DEPTH) { scoreGoal(TEAM.blue); return; }
     if (ball.x < WORLD.left + ball.r && !inGoalMouth) { ball.x = WORLD.left + ball.r; ball.vx = Math.abs(ball.vx) * .72; }
     if (ball.x > WORLD.right - ball.r && !inGoalMouth) { ball.x = WORLD.right - ball.r; ball.vx = -Math.abs(ball.vx) * .72; }
     autoPossession();
@@ -626,8 +638,11 @@
 
   function ensureUserPossession() {
     const player = userPlayer();
+    if (!player) return false;
     if (ball.ownerId === player.id) return true;
-    if (!ball.ownerId && distance(player, ball) < 68) return claimBall(player);
+    const owner = getPlayer(ball.ownerId);
+    if (owner && owner.team === TEAM.blue && distance(player, owner) < 108) return claimBall(player, true);
+    if (!ball.ownerId && distance(player, ball) < 96) return claimBall(player);
     return false;
   }
 
@@ -697,7 +712,13 @@
   function beginShoot() {
     if (!state.active || state.paused || state.goalLock || state.shootCharging) return;
     if (state.mode === "penalty") { penaltyShoot(); return; }
-    if (!ensureUserPossession()) { showToast("靠近足球後才能射門！", 1200); return; }
+    if (!ensureUserPossession()) {
+      const owner = getPlayer(ball.ownerId);
+      showToast(owner && owner.team === TEAM.red ? "先靠近持球對手，再按搶球！" : "靠近足球後才能射門！", 1200);
+      return;
+    }
+    const player = userPlayer();
+    if (player && Math.abs(player.vx) + Math.abs(player.vy) < 48) player.facing = 0;
     state.shootCharging = true;
     state.shootStartedAt = performance.now();
     ui.aimHint.textContent = "放開射門！力量正在累積";
@@ -712,8 +733,9 @@
     if (!player || ball.ownerId !== player.id) return;
     const charge = clamp((performance.now() - state.shootStartedAt) / 1000, .18, 1);
     const direction = normalize(Math.cos(player.facing), Math.sin(player.facing));
-    const speed = 490 + charge * 430;
-    releaseBall(direction.x * speed, direction.y * speed, TEAM.blue);
+    const aim = direction.length > 0.01 ? direction : { x: 1, y: 0 };
+    const speed = 620 + charge * 520;
+    releaseBall(aim.x * speed, aim.y * speed, TEAM.blue, 580);
     state.shootFxTimer = .24;
     state.shots += 1;
     state.comboTimer = 4;
@@ -735,7 +757,7 @@
     });
     const target = candidates[0];
     const aim = normalize(target.x - player.x, target.y - player.y);
-    releaseBall(aim.x * 470, aim.y * 470, TEAM.blue);
+    releaseBall(aim.x * 560, aim.y * 560, TEAM.blue, 380);
     state.passes += 1;
     state.comboTimer = 4;
     setSkill(6);
@@ -753,26 +775,43 @@
     spawnKickParticles(player.x, player.y + 17, "#6de6ff", 5);
   }
 
+  function lungeToward(player, target, amount) {
+    const offset = { x: target.x - player.x, y: target.y - player.y };
+    const length = Math.hypot(offset.x, offset.y);
+    if (length <= 1) return;
+    player.x += offset.x / length * amount;
+    player.y += offset.y / length * amount;
+    player.facing = Math.atan2(offset.y, offset.x);
+    keepPlayerOnPitch(player);
+  }
+
   function tackle() {
     if (!state.active || state.paused || state.goalLock) return;
     const player = userPlayer();
     const owner = getPlayer(ball.ownerId);
-    if (owner && owner.team === TEAM.red && distance(player, owner) < 76) {
-      ball.ownerId = player.id;
-      ball.lastTouch = TEAM.blue;
-      state.blueTouches += 1;
+    if (owner && owner.team === TEAM.blue) {
+      showToast("球已經在我方腳下！", 800);
+      return;
+    }
+    const target = owner || ball;
+    if (owner && owner.team === TEAM.red && distance(player, owner) < TACKLE_RADIUS) {
+      claimBall(player, true);
+      lungeToward(player, owner, 22);
       setSkill(12);
       spawnKickParticles(player.x, player.y, "#9ce7ff", 10);
       showToast("漂亮搶球！", 1000);
       return;
     }
-    if (!owner && distance(player, ball) < 82) {
-      claimBall(player);
+    if (!owner && distance(player, ball) < TACKLE_RADIUS) {
+      claimBall(player, true);
+      lungeToward(player, ball, 18);
       setSkill(7);
       showToast("把球留下來！", 900);
       return;
     }
-    state.dashTimer = Math.max(state.dashTimer, .16);
+    lungeToward(player, target, 26);
+    state.dashTimer = Math.max(state.dashTimer, .22);
+    showToast("再靠近一點才能搶到球！", 900);
   }
 
   function useSkill() {
@@ -781,7 +820,7 @@
     if (!ensureUserPossession()) { showToast("拿到球才能發動必殺技！", 1100); return; }
     const player = userPlayer();
     const direction = normalize(Math.cos(player.facing), Math.sin(player.facing));
-    releaseBall(direction.x * 1050, direction.y * 1050, TEAM.blue);
+    releaseBall(direction.x * 1180, direction.y * 1180, TEAM.blue, 720);
     state.skillFxTimer = .65;
     state.shots += 1;
     state.skill = 0;
@@ -823,7 +862,7 @@
   function cpuShoot(player) {
     const targetY = WORLD.height / 2 + random(-95, 95);
     const aim = normalize(WORLD.left - player.x, targetY - player.y);
-    releaseBall(aim.x * random(430, 560), aim.y * random(430, 560), TEAM.red);
+    releaseBall(aim.x * random(560, 720), aim.y * random(560, 720), TEAM.red, 500);
     spawnKickParticles(player.x + aim.x * 27, player.y + aim.y * 27, "#ff9e79", 6);
   }
 
@@ -951,11 +990,12 @@
     const owner = getPlayer(ball.ownerId);
     if (owner) {
       for (const opponent of opponents(owner.team)) {
-        if (distance(owner, opponent) < 40 && opponent.team === TEAM.red && Math.random() < .012) {
+        if (distance(owner, opponent) < 30 && Math.random() < .0024) {
           ball.ownerId = opponent.id;
           ball.lastTouch = opponent.team;
-          state.redTouches += 1;
-          showToast("被紅隊碰到了，快搶回來！", 900);
+          if (opponent.team === TEAM.red) state.redTouches += 1;
+          else state.blueTouches += 1;
+          showToast("被碰到掉球了，快搶回來！", 900);
           break;
         }
       }
@@ -1234,13 +1274,39 @@
   }
 
   function drawBall() {
+    const now = performance.now() / 1000;
+    const pulse = 1 + Math.sin(now * 7.2) * .07;
+    const radius = BALL_VISUAL_RADIUS * pulse;
     ctx.save();
-    ctx.globalAlpha = .28; ctx.fillStyle = "#05291e"; ctx.beginPath(); ctx.ellipse(ball.x + 4, ball.y + 12, 18, 7, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
+    ctx.globalAlpha = .38; ctx.fillStyle = "#05291e"; ctx.beginPath(); ctx.ellipse(ball.x + 3, ball.y + 14, 19, 8, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
     const owner = getPlayer(ball.ownerId);
-    if (owner) { ctx.fillStyle = owner.team === TEAM.blue ? "rgba(112,224,255,.24)" : "rgba(255,126,101,.25)"; ctx.beginPath(); ctx.arc(ball.x, ball.y, 29, 0, Math.PI * 2); ctx.fill(); }
-    ctx.fillStyle = "#fbfdff"; ctx.strokeStyle = "#172847"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = "#182a4b"; ctx.beginPath(); ctx.arc(ball.x, ball.y, 5, 0, Math.PI * 2); ctx.fill();
-    for (let i = 0; i < 5; i += 1) { const angle = i * Math.PI * 2 / 5 + .28; ctx.beginPath(); ctx.moveTo(ball.x + Math.cos(angle) * 5, ball.y + Math.sin(angle) * 5); ctx.lineTo(ball.x + Math.cos(angle) * 11, ball.y + Math.sin(angle) * 11); ctx.stroke(); }
+    if (owner) {
+      ctx.fillStyle = owner.team === TEAM.blue ? "rgba(112,224,255,.22)" : "rgba(255,126,101,.22)";
+      ctx.beginPath(); ctx.arc(ball.x, ball.y, 34 * pulse, 0, Math.PI * 2); ctx.fill();
+    } else {
+      ctx.fillStyle = "rgba(255,226,117,.16)";
+      ctx.beginPath(); ctx.arc(ball.x, ball.y, 26 + Math.sin(now * 8) * 3, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = "rgba(255,224,102,.55)"; ctx.beginPath(); ctx.arc(ball.x, ball.y, radius + 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#fbfdff"; ctx.strokeStyle = "#172847"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(ball.x, ball.y, radius, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#182a4b"; ctx.beginPath(); ctx.arc(ball.x, ball.y, 5.5, 0, Math.PI * 2); ctx.fill();
+    for (let i = 0; i < 5; i += 1) {
+      const angle = i * Math.PI * 2 / 5 + now * 1.8;
+      ctx.beginPath();
+      ctx.moveTo(ball.x + Math.cos(angle) * 5.5, ball.y + Math.sin(angle) * 5.5);
+      ctx.lineTo(ball.x + Math.cos(angle) * (radius - 3), ball.y + Math.sin(angle) * (radius - 3));
+      ctx.stroke();
+    }
+    const markerY = ball.y - 34 + Math.sin(now * 6.4) * 4;
+    ctx.fillStyle = "#ffe066";
+    ctx.beginPath();
+    ctx.moveTo(ball.x, markerY + 12);
+    ctx.lineTo(ball.x - 9, markerY - 5);
+    ctx.lineTo(ball.x + 9, markerY - 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255,244,176,.85)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(ball.x, ball.y, radius + 10, 0, Math.PI * 2); ctx.stroke();
     const selected = userPlayer();
     if (state.shootCharging && selected && ball.ownerId === selected.id && actionIcons.shoot.complete && actionIcons.shoot.naturalWidth > 0) {
       const charge = clamp((performance.now() - state.shootStartedAt) / 1000, 0, 1);

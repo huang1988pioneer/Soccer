@@ -86,6 +86,7 @@ var move_target_active := false
 
 var pitch_layer: PitchLayer
 var actors_layer: ActorsLayer
+var ball_overlay: BallOverlay
 var ui_layer: CanvasLayer
 var menu_ui: Control
 var match_ui: Control
@@ -157,6 +158,8 @@ func _process(delta: float) -> void:
 			_update_game(delta)
 	fx.update(delta)
 	actors_layer.queue_redraw()
+	if is_instance_valid(ball_overlay):
+		ball_overlay.queue_redraw()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -496,7 +499,7 @@ func _build_match_ui() -> void:
 	match_ui = UIKit.full_control()
 	match_ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui_layer.add_child(match_ui)
-	var top := UIKit.panel(match_ui, Rect2(28, 18, 1224, 52), Color("#0a2450", 0.96), 14)
+	var top := UIKit.panel(match_ui, Rect2(28, 18, 1224, 52), Color("#0a2450", 0.9), 14)
 	UIKit.label(top, "●", Vector2(15, 11), Vector2(20, 28), 16, Color("#65e1a0"))
 	UIKit.label(top, "RIVERSIDE STADIUM", Vector2(40, 5), Vector2(220, 19), 10, Color("#82dfff"))
 	match_header_label = UIKit.label(top, "快速賽 · 第 1 局", Vector2(40, 22), Vector2(300, 24), 15, text_main)
@@ -505,7 +508,8 @@ func _build_match_ui() -> void:
 	var quit := UIKit.button(top, "退出", Rect2(1172, 9, 60, 34), false)
 	quit.pressed.connect(_quit_to_menu)
 
-	var board := UIKit.panel(match_ui, Rect2(40, 83, 900, 61), Color("#092d5e", 0.96), 14)
+	var board := UIKit.panel(match_ui, Rect2(40, 83, 900, 61), Color("#092d5e", 0.72), 14)
+	board.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hud["blue_score"] = UIKit.label(board, "0", Vector2(235, 8), Vector2(45, 45), 30, text_main)
 	hud["blue_name"] = UIKit.label(board, "🐾  喵咪隊", Vector2(18, 9), Vector2(210, 25), 13, text_main)
 	UIKit.label(board, "PLAYER", Vector2(20, 33), Vector2(150, 18), 9, text_muted)
@@ -515,7 +519,8 @@ func _build_match_ui() -> void:
 	hud["red_name"] = UIKit.label(board, "紅隊  🐱", Vector2(660, 9), Vector2(210, 25), 13, text_main)
 	UIKit.label(board, "CPU · NOVICE", Vector2(661, 33), Vector2(180, 18), 9, text_muted)
 
-	var captain := UIKit.panel(match_ui, Rect2(963, 83, 289, 176), Color("#0a2c5c", 0.96), 16)
+	var captain := UIKit.panel(match_ui, Rect2(963, 83, 289, 176), Color("#0a2c5c", 0.72), 16)
+	captain.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	UIKit.label(captain, "目前操作                         1P", Vector2(14, 10), Vector2(255, 22), 11, Color("#b3d1ed"))
 	captain_portrait_sprite = Sprite2D.new()
 	captain_portrait_sprite.texture = captain_player_texture
@@ -540,7 +545,8 @@ func _build_match_ui() -> void:
 	hud["skill_bar"].size = Vector2(108, 8)
 	captain.add_child(hud["skill_bar"])
 
-	var team_card := UIKit.panel(match_ui, Rect2(963, 270, 289, 156), Color("#0a2c5c", 0.96), 16)
+	var team_card := UIKit.panel(match_ui, Rect2(963, 270, 289, 156), Color("#0a2c5c", 0.72), 16)
+	team_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	UIKit.label(team_card, "場上隊友  ·  1/2/3 切換", Vector2(14, 10), Vector2(255, 22), 11, Color("#b3d1ed"))
 	team_row_labels.clear()
 	team_row_buttons.clear()
@@ -562,12 +568,17 @@ func _build_match_ui() -> void:
 		team_card.add_child(row_button)
 		team_row_buttons.append(row_button)
 
-	var stats := UIKit.panel(match_ui, Rect2(963, 437, 289, 145), Color("#0a2c5c", 0.96), 16)
+	var stats := UIKit.panel(match_ui, Rect2(963, 437, 289, 145), Color("#0a2c5c", 0.72), 16)
+	stats.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	UIKit.label(stats, "比賽資料                         LIVE", Vector2(14, 10), Vector2(260, 22), 11, Color("#b3d1ed"))
 	hud["shots"] = UIKit.label(stats, "射門                                      0", Vector2(15, 42), Vector2(260, 22), 10, text_muted)
 	hud["passes"] = UIKit.label(stats, "傳球                                      0", Vector2(15, 68), Vector2(260, 22), 10, text_muted)
 	hud["possession"] = UIKit.label(stats, "控球率                                  50%", Vector2(15, 94), Vector2(260, 22), 10, text_muted)
 	hud["combo"] = UIKit.label(stats, "連擊                                      x1", Vector2(15, 120), Vector2(260, 22), 10, gold)
+
+	ball_overlay = BallOverlay.new()
+	match_ui.add_child(ball_overlay)
+	ball_overlay.bind(self)
 
 	action_buttons["pass"] = UIKit.button(match_ui, "", Rect2(650, 594, 74, 58), false)
 	action_buttons["shoot"] = UIKit.button(match_ui, "", Rect2(733, 580, 88, 72), true)
@@ -746,7 +757,7 @@ func _start_match(mode: String = "quick") -> void:
 	pitch_layer.configure(match_background_texture, crowd)
 	_update_captain_card()
 	_update_hud()
-	_show_toast("A / D 瞄準，SPACE 射門！" if game_mode == "penalty" else ("錦標賽開幕！先贏兩局就能捧杯。" if game_mode == "tournament" else "開球！靠近足球就能自動控球。"), 2.4)
+	_show_toast("A / D 瞄準，SPACE 射門！" if game_mode == "penalty" else ("錦標賽開幕！跟著金色箭頭找球，先贏兩局就能捧杯。" if game_mode == "tournament" else "開球！跟著金色箭頭找球，靠近就能控球，再按射門或搶球。"), 2.4)
 	queue_redraw()
 
 
@@ -1115,8 +1126,8 @@ func _update_cpu(player: SoccerPlayer, delta: float) -> void:
 	_move_toward(player, target, delta, 0.64 if player.role == "守門" else 0.78)
 
 
-func _claim_ball(player: SoccerPlayer) -> bool:
-	if GameConst.now() < ball.no_claim_until:
+func _claim_ball(player: SoccerPlayer, ignore_lock := false) -> bool:
+	if not ignore_lock and GameConst.now() < ball.no_claim_until:
 		return false
 	ball.owner_id = player.id
 	ball.last_touch = player.team
@@ -1130,9 +1141,13 @@ func _claim_ball(player: SoccerPlayer) -> bool:
 func _auto_possession() -> void:
 	if ball.has_owner() or GameConst.now() < ball.no_claim_until:
 		return
+	var ball_pos := ball.pos()
+	var user := user_player()
+	if user != null and user.distance_to(ball_pos) < GameConst.BALL_CLAIM_RADIUS + 16.0:
+		_claim_ball(user)
+		return
 	var best: SoccerPlayer = null
 	var best_distance := GameConst.BALL_CLAIM_RADIUS
-	var ball_pos := ball.pos()
 	for player in players:
 		var current := player.distance_to(ball_pos)
 		if current < best_distance:
@@ -1145,14 +1160,12 @@ func _auto_possession() -> void:
 func _update_ball(delta: float) -> void:
 	var owner := get_player(ball.owner_id)
 	if owner != null:
-		ball.x = owner.x + cos(owner.facing) * 31.0
-		ball.y = owner.y + sin(owner.facing) * 31.0
-		ball.vx = owner.vx
-		ball.vy = owner.vy
+		ball.attach_to(owner)
 		return
 	ball.x += ball.vx * delta
 	ball.y += ball.vy * delta
-	var drag := pow(0.085, delta)
+	var speed := Vector2(ball.vx, ball.vy).length()
+	var drag := pow(0.58, delta) if speed > 140.0 else pow(0.12, delta)
 	ball.vx *= drag
 	ball.vy *= drag
 	var in_goal_mouth := ball.y > GOAL_TOP and ball.y < GOAL_BOTTOM
@@ -1162,10 +1175,10 @@ func _update_ball(delta: float) -> void:
 	if ball.y > PITCH.end.y - 14.0:
 		ball.y = PITCH.end.y - 14.0
 		ball.vy = -absf(ball.vy) * 0.72
-	if in_goal_mouth and ball.x < -14.0:
+	if in_goal_mouth and ball.x < PITCH.position.x - GameConst.GOAL_LINE_DEPTH:
 		_score_goal(RED)
 		return
-	if in_goal_mouth and ball.x > WORLD_SIZE.x + 14.0:
+	if in_goal_mouth and ball.x > PITCH.end.x + GameConst.GOAL_LINE_DEPTH:
 		_score_goal(BLUE)
 		return
 	if not in_goal_mouth and ball.x < PITCH.position.x + 14.0:
@@ -1198,11 +1211,14 @@ func _resolve_bumps() -> void:
 		return
 	var opponents := red_players if owner.team == BLUE else blue_players
 	for opponent in opponents:
-		if owner.distance_to(opponent.pos()) < 40.0 and randf() < 0.012:
+		if owner.distance_to(opponent.pos()) < 30.0 and randf() < 0.0024:
 			ball.owner_id = opponent.id
 			ball.last_touch = opponent.team
-			red_touches += 1
-			_show_toast("被紅隊碰到了，快搶回來！", 1.0)
+			if opponent.team == RED:
+				red_touches += 1
+			else:
+				blue_touches += 1
+			_show_toast("被碰到掉球了，快搶回來！", 1.0)
 			break
 
 
@@ -1212,7 +1228,10 @@ func _ensure_user_possession() -> bool:
 		return false
 	if ball.owner_id == player.id:
 		return true
-	if not ball.has_owner() and player.distance_to(ball.pos()) < 68.0:
+	var owner := get_player(ball.owner_id)
+	if owner != null and owner.team == BLUE and player.distance_to(owner.pos()) < 108.0:
+		return _claim_ball(player, true)
+	if not ball.has_owner() and player.distance_to(ball.pos()) < 96.0:
 		return _claim_ball(player)
 	return false
 
@@ -1224,8 +1243,15 @@ func _begin_shoot() -> void:
 		_penalty_shoot()
 		return
 	if not _ensure_user_possession():
-		_show_toast("靠近足球後才能射門！", 1.1)
+		var owner := get_player(ball.owner_id)
+		if owner != null and owner.team == RED:
+			_show_toast("先靠近持球對手，再按搶球！", 1.1)
+		else:
+			_show_toast("靠近足球後才能射門！", 1.1)
 		return
+	var player := user_player()
+	if player != null and absf(player.vx) + absf(player.vy) < 48.0:
+		player.facing = 0.0
 	shoot_charging = true
 	shoot_started_at = Time.get_ticks_msec()
 	aim_label.text = "放開射門！力量正在累積"
@@ -1242,8 +1268,12 @@ func _finish_shoot() -> void:
 	if player == null or ball.owner_id != player.id:
 		return
 	var charge := clampf(float(Time.get_ticks_msec() - shoot_started_at) / 1000.0, 0.18, 1.0)
-	var direction := Vector2(cos(player.facing), sin(player.facing)).normalized()
-	_release_ball(direction * (490.0 + charge * 430.0), BLUE)
+	var direction := Vector2(cos(player.facing), sin(player.facing))
+	if direction.length_squared() < 0.01:
+		direction = Vector2.RIGHT
+	else:
+		direction = direction.normalized()
+	_release_ball(direction * (620.0 + charge * 520.0), BLUE, 0.58)
 	shoot_fx_timer = 0.24
 	shots += 1
 	combo_timer = 4.0
@@ -1276,7 +1306,7 @@ func _pass_ball() -> void:
 	if target == null:
 		return
 	var direction := (target.pos() - player.pos()).normalized()
-	_release_ball(direction * 470.0, BLUE)
+	_release_ball(direction * 560.0, BLUE, 0.38)
 	passes += 1
 	combo_timer = 4.0
 	_set_skill(6.0)
@@ -1306,20 +1336,26 @@ func _tackle() -> void:
 	if player == null:
 		return
 	var owner := get_player(ball.owner_id)
-	if owner != null and owner.team == RED and player.distance_to(owner.pos()) < 76.0:
-		ball.owner_id = player.id
-		ball.last_touch = BLUE
-		blue_touches += 1
+	if owner != null and owner.team == BLUE:
+		_show_toast("球已經在我方腳下！", 0.8)
+		return
+	var target_pos := owner.pos() if owner != null else ball.pos()
+	if owner != null and owner.team == RED and player.distance_to(owner.pos()) < GameConst.TACKLE_RADIUS:
+		_claim_ball(player, true)
+		_lunge_toward(player, owner.pos(), 22.0)
 		_set_skill(12.0)
 		fx.spawn_kick(player.x, player.y, Color("#9ce7ff"), 10)
 		_show_toast("漂亮搶球！", 1.0)
 		return
-	if not ball.has_owner() and player.distance_to(ball.pos()) < 82.0:
-		_claim_ball(player)
+	if not ball.has_owner() and player.distance_to(ball.pos()) < GameConst.TACKLE_RADIUS:
+		_claim_ball(player, true)
+		_lunge_toward(player, ball.pos(), 18.0)
 		_set_skill(7.0)
 		_show_toast("把球留下來！", 0.9)
 		return
-	dash_timer = maxf(dash_timer, 0.16)
+	_lunge_toward(player, target_pos, 26.0)
+	dash_timer = maxf(dash_timer, 0.22)
+	_show_toast("再靠近一點才能搶到球！", 0.9)
 
 
 func _use_skill() -> void:
@@ -1334,8 +1370,12 @@ func _use_skill() -> void:
 	var player := user_player()
 	if player == null:
 		return
-	var direction := Vector2(cos(player.facing), sin(player.facing)).normalized()
-	_release_ball(direction * 1050.0, BLUE)
+	var direction := Vector2(cos(player.facing), sin(player.facing))
+	if direction.length_squared() < 0.01:
+		direction = Vector2.RIGHT
+	else:
+		direction = direction.normalized()
+	_release_ball(direction * 1180.0, BLUE, 0.72)
 	shots += 1
 	skill = 0.0
 	combo_timer = 7.0
@@ -1344,14 +1384,25 @@ func _use_skill() -> void:
 	_show_toast("海浪射門！必殺技發動！", 1.8)
 
 
-func _release_ball(velocity: Vector2, source_team: String) -> void:
-	ball.release(velocity, source_team)
+func _lunge_toward(player: SoccerPlayer, target: Vector2, amount: float) -> void:
+	var offset := target - player.pos()
+	if offset.length() <= 1.0:
+		return
+	var direction := offset.normalized()
+	player.x += direction.x * amount
+	player.y += direction.y * amount
+	player.facing = atan2(direction.y, direction.x)
+	player.keep_on_pitch()
+
+
+func _release_ball(velocity: Vector2, source_team: String, claim_lock := 0.55) -> void:
+	ball.release(velocity, source_team, claim_lock)
 
 
 func _cpu_shoot(player: SoccerPlayer) -> void:
 	var target_y := 360.0 + randf_range(-95.0, 95.0)
 	var direction := Vector2(-player.x + 48.0, target_y - player.y).normalized()
-	_release_ball(direction * randf_range(430.0, 560.0), RED)
+	_release_ball(direction * randf_range(560.0, 720.0), RED, 0.5)
 	fx.spawn_kick(player.x + direction.x * 27.0, player.y + direction.y * 27.0, Color("#ff9e79"), 6)
 
 
