@@ -49,7 +49,8 @@ python3 -m http.server 8000
 ## 檔案
 
 - `project.godot`／`Main.tscn`：Godot 專案設定與主場景
-- `main.gd`：Godot 版 UI、Canvas 球場、球物理、玩家輸入、CPU 與比賽狀態
+- `main.gd`：Godot 版流程、輸入、比賽模擬與主選單 HUD
+- `scripts/`：常數、球員／足球型別、UI 元件、粒子池、可快取球場層與角色繪製層
 - `index.html`／`styles.css`／`game.js`：零依賴瀏覽器替代版本
 - `assets/maomao-mascot.png`：提供的角色參考圖（透明 PNG）
 - `assets/generated/menu-stadium-background-v2.png`：主選單生成式球場背景
@@ -81,7 +82,7 @@ python3 -m http.server 8000
 - `assets/generated/action-tackle-icon-v1.png`：搶球操作圖示（透明 PNG）
 - `assets/generated/action-skill-icon-v1.png`：必殺技操作圖示（透明 PNG）
 
-Godot 版以單一 GDScript 維持球場、物理、CPU 與互動邏輯，搭配生成式背景、角色與特效素材；不需要額外外掛或套件。
+Godot 版把球場繪製、角色繪製、粒子與 UI 工廠拆成 `scripts/` 模組，主場景只保留流程與模擬；搭配生成式背景、角色與特效素材，不需要額外外掛或套件。目前版本為 **1.1.0**。
 
 ## 平台匯出
 
