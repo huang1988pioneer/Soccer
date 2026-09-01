@@ -82,7 +82,7 @@ python3 -m http.server 8000
 - `assets/generated/action-tackle-icon-v1.png`：搶球操作圖示（透明 PNG）
 - `assets/generated/action-skill-icon-v1.png`：必殺技操作圖示（透明 PNG）
 
-Godot 版把球場繪製、角色繪製、粒子與 UI 工廠拆成 `scripts/` 模組，主場景只保留流程與模擬；搭配生成式背景、角色與特效素材，不需要額外外掛或套件。目前版本為 **1.1.0**。
+Godot 版把球場繪製、角色繪製、粒子與 UI 工廠拆成 `scripts/` 模組，主場景只保留流程與模擬；搭配生成式背景、角色與特效素材，不需要額外外掛或套件。目前版本為 **1.1.1**。
 
 ## 平台匯出
 
